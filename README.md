@@ -1,4 +1,4 @@
-# Intel(R) Media Driver for VAAPI
+# Intel(R) Media Driver for VAAPI for CNM
 
 
 ## Introduction
