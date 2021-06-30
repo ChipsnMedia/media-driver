@@ -376,7 +376,7 @@ static VAStatus AllocateFrameBuffer(
     FrameBufferFormat format = FORMAT_420;
     int32_t fbHeight = 0;
     int32_t fbStride = 0;
-    int32_t fbStrideDisp = 0;
+    int32_t fbStrideLinear = 0;
     int32_t fbSize = 0;
     int32_t fbCount = 0;
 
@@ -423,16 +423,16 @@ static VAStatus AllocateFrameBuffer(
     }
 
     if (decOP.bitstreamFormat == STD_VP9) {
-        fbHeight     = VPU_ALIGN64(seqInfo.picHeight);
-        fbStrideDisp = CalcStride(VPU_ALIGN64(seqInfo.picWidth), seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
+        fbHeight       = VPU_ALIGN64(seqInfo.picHeight);
+        fbStrideLinear = CalcStride(VPU_ALIGN64(seqInfo.picWidth), seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
     } else if (decOP.bitstreamFormat == STD_AV1) {
-        fbHeight     = VPU_ALIGN8(seqInfo.picHeight);
-        fbStrideDisp = CalcStride(VPU_ALIGN16(seqInfo.picWidth), seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
+        fbHeight       = VPU_ALIGN8(seqInfo.picHeight);
+        fbStrideLinear = CalcStride(VPU_ALIGN16(seqInfo.picWidth), seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
     } else {
-        fbHeight     = seqInfo.picHeight;
-        fbStrideDisp = CalcStride(seqInfo.picWidth, seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
+        fbHeight       = seqInfo.picHeight;
+        fbStrideLinear = CalcStride(seqInfo.picWidth, seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
     }
-    fbSize = VPU_GetFrameBufSize(hdl, 0, fbStrideDisp, fbHeight, LINEAR_FRAME_MAP, FORMAT_420, decOP.cbcrInterleave, NULL);
+    fbSize = VPU_GetFrameBufSize(hdl, 0, fbStrideLinear, fbHeight, LINEAR_FRAME_MAP, FORMAT_420, decOP.cbcrInterleave, NULL);
 
 #ifdef CNM_FPGA_PLATFORM
     for (int32_t index = fbCount; index < fbCount + numOfRenderTargets; index++) {
@@ -458,7 +458,7 @@ static VAStatus AllocateFrameBuffer(
     fbAllocInfo.cbcrInterleave = decOP.cbcrInterleave;
     fbAllocInfo.nv21           = decOP.nv21;
     fbAllocInfo.format         = FORMAT_420;
-    fbAllocInfo.stride         = fbStrideDisp;
+    fbAllocInfo.stride         = fbStrideLinear;
     fbAllocInfo.height         = fbHeight;
     fbAllocInfo.endian         = decOP.frameEndian;
     fbAllocInfo.lumaBitDepth   = 8;
@@ -764,7 +764,6 @@ static VAStatus VpuApiDecPic(
     DecOutputInfo outputInfo;
     Int32 intrFlag = 0;
     Int32 time = 0;
-    Int32 fbIndex = 0;
 
     osal_memset(&param,      0x00, sizeof(DecParam));
     osal_memset(&outputInfo, 0x00, sizeof(DecOutputInfo));
@@ -772,27 +771,26 @@ static VAStatus VpuApiDecPic(
     VPU_DecSetRdPtr(hdl, mediaCtx->bsBuf.phys_addr, TRUE);
     VPU_DecUpdateBitstreamBuffer(hdl, mediaCtx->bsSize);
 
-    fbIndex = mediaCtx->minFrameBufferCount + mediaCtx->renderTargetIndex;
-
-    param.vaParamAddr        = mediaCtx->paramBuf.phys_addr;
-    param.vaSliceNum         = mediaCtx->numOfSlice;
-    param.vaRenderTarget     = mediaCtx->renderTargetIndex;
+    param.vaParamAddr       = mediaCtx->paramBuf.phys_addr;
+    param.vaSliceNum        = mediaCtx->numOfSlice;
+    param.vaRenderTarget    = GetRenderTargetIndex(mediaCtx, mediaCtx->renderTarget);
 #ifdef CNM_FPGA_PLATFORM
-    param.vaDisplayBufAddrY  = mediaCtx->frameBuf[fbIndex].bufY;
-    param.vaDisplayBufAddrCb = mediaCtx->frameBuf[fbIndex].bufCb;
-    param.vaDisplayBufAddrCr = mediaCtx->frameBuf[fbIndex].bufCr;
+    param.vaDecodeBufAddrY  = mediaCtx->frameBuf[mediaCtx->minFrameBufferCount + param.vaRenderTarget].bufY;
+    param.vaDecodeBufAddrCb = mediaCtx->frameBuf[mediaCtx->minFrameBufferCount + param.vaRenderTarget].bufCb;
+    param.vaDecodeBufAddrCr = mediaCtx->frameBuf[mediaCtx->minFrameBufferCount + param.vaRenderTarget].bufCr;
 #else
-    printf("[CNM_VPUAPI] Need to implement customers physical address.\n");
+    printf("[CNM_VPUAPI] customer needs to get physical address from render_target surface=%p", mediaCtx->renderTarget);
+    printf("[CNM_VPUAPI] customer needs to set param.vaDecodeBufAddrY and param.vaDecodeBufAddrCb and param.vaDecodeBufAddrCr to Physical address that VPU can access.\n");
 #endif
 
     printf("[CNM_VPUAPI] bsBuf: 0x%x\n", mediaCtx->bsBuf.phys_addr);
     printf("[CNM_VPUAPI] bsSize: %d\n", mediaCtx->bsSize);
     printf("[CNM_VPUAPI] paramBuf: 0x%x\n", param.vaParamAddr);
     printf("[CNM_VPUAPI] numOfSlice: %d\n", param.vaSliceNum);
-    printf("[CNM_VPUAPI] renderTargetIndex: %d\n", param.vaRenderTarget);
-    printf("[CNM_VPUAPI] BufAddrY: 0x%x\n", param.vaDisplayBufAddrY);
-    printf("[CNM_VPUAPI] BufAddrCb: 0x%x\n", param.vaDisplayBufAddrCb);
-    printf("[CNM_VPUAPI] BufAddrCr: 0x%x\n", param.vaDisplayBufAddrCr);
+    printf("[CNM_VPUAPI] RenderTarget: %d\n", param.vaRenderTarget);
+    printf("[CNM_VPUAPI] BufAddrY: 0x%x\n", param.vaDecodeBufAddrY);
+    printf("[CNM_VPUAPI] BufAddrCb: 0x%x\n", param.vaDecodeBufAddrCb);
+    printf("[CNM_VPUAPI] BufAddrCr: 0x%x\n", param.vaDecodeBufAddrCr);
 
     if ((ret=VPU_DecStartOneFrame(hdl, &param)) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] FAIL VPU_DecStartOneFrame: 0x%x\n", ret);
@@ -4430,7 +4428,7 @@ VAStatus DdiMedia_BeginPicture (
     {
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
 #ifdef CNM_VPUAPI_INTERFACE
-            mediaCtx->renderTargetIndex = GetRenderTargetIndex(mediaCtx, render_target);
+            mediaCtx->renderTarget = render_target;
 #endif
             return DdiDecode_BeginPicture(ctx, context, render_target);
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:

@@ -559,7 +559,7 @@ struct DDI_MEDIA_CONTEXT
     vpu_buffer_t bsBuf;
     Uint32       bsSize;
     uint32_t     numOfSlice;
-    int32_t      renderTargetIndex;
+    VASurfaceID  renderTarget;
     uint32_t     minFrameBufferCount;
     int          numOfRenderTargets;
     VASurfaceID  renderTargets[100];
