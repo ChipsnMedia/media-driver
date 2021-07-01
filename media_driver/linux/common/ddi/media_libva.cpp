@@ -779,7 +779,7 @@ static VAStatus VpuApiDecPic(
     param.vaDecodeBufAddrCb = mediaCtx->frameBuf[mediaCtx->minFrameBufferCount + param.vaRenderTarget].bufCb;
     param.vaDecodeBufAddrCr = mediaCtx->frameBuf[mediaCtx->minFrameBufferCount + param.vaRenderTarget].bufCr;
 #else
-    printf("[CNM_VPUAPI] customer needs to get physical address from render_target surface=%p", mediaCtx->renderTarget);
+    printf("[CNM_VPUAPI] customer needs to get physical address from render_target surface=0x%x", mediaCtx->renderTarget);
     printf("[CNM_VPUAPI] customer needs to set param.vaDecodeBufAddrY and param.vaDecodeBufAddrCb and param.vaDecodeBufAddrCr to Physical address that VPU can access.\n");
 #endif
 
