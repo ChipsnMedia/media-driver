@@ -140,6 +140,11 @@ if (NOT DEFINED INCLUDED_LIBS OR "${INCLUDED_LIBS}" STREQUAL "")
 
 endif(NOT DEFINED INCLUDED_LIBS OR "${INCLUDED_LIBS}" STREQUAL "")
 
+#ifdef CNM_VPUAPI_INTERFACE
+target_link_libraries ( ${LIB_NAME} "vpuapi")
+add_definitions(-DCNM_VPUAPI_INTERFACE)
+#endif
+
 # post target attributes
 bs_set_post_target()
 

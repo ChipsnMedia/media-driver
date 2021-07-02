@@ -52,6 +52,10 @@
 #include <va/va_dec_jpeg.h>
 #include <va/va_backend.h>
 
+#ifdef CNM_VPUAPI_INTERFACE
+#include <vpu/vpuapi/vpuapi.h>
+#endif
+
 #ifdef ANDROID
 #include <utils/Log.h>
 
@@ -546,6 +550,23 @@ struct DDI_MEDIA_CONTEXT
     MEDIA_MUTEX_T    PutSurfaceSwapBufferMutex;
 #endif
     bool m_apoMosEnabled;
+#ifdef CNM_VPUAPI_INTERFACE
+    DecHandle    decHandle;
+    DecOpenParam decOP;
+    VAProfile    vaProfile;
+    vpu_buffer_t paramBuf;
+    Uint32       paramSize;
+    vpu_buffer_t bsBuf;
+    Uint32       bsSize;
+    uint32_t     numOfSlice;
+    VASurfaceID  renderTarget;
+    uint32_t     minFrameBufferCount;
+    int          numOfRenderTargets;
+    VASurfaceID  renderTargets[100];
+    FrameBuffer  frameBuf[100];
+    vpu_buffer_t frameBufMem[100];
+    bool         seqInited;
+#endif
 };
 
 static __inline PDDI_MEDIA_CONTEXT DdiMedia_GetMediaContext (VADriverContextP ctx)
