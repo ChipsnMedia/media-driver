@@ -422,16 +422,8 @@ static VAStatus AllocateFrameBuffer(
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
 
-    if (decOP.bitstreamFormat == STD_VP9) {
-        fbHeight       = VPU_ALIGN64(seqInfo.picHeight);
-        fbStrideLinear = CalcStride(VPU_ALIGN64(seqInfo.picWidth), seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
-    } else if (decOP.bitstreamFormat == STD_AV1) {
-        fbHeight       = VPU_ALIGN8(seqInfo.picHeight);
-        fbStrideLinear = CalcStride(VPU_ALIGN16(seqInfo.picWidth), seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
-    } else {
-        fbHeight       = seqInfo.picHeight;
-        fbStrideLinear = CalcStride(seqInfo.picWidth, seqInfo.picHeight, FORMAT_420, decOP.cbcrInterleave, LINEAR_FRAME_MAP);
-    }
+    fbHeight       = mediaCtx->linearHeight;
+    fbStrideLinear = mediaCtx->linearStride;
     fbSize = VPU_GetFrameBufSize(hdl, 0, fbStrideLinear, fbHeight, LINEAR_FRAME_MAP, FORMAT_420, decOP.cbcrInterleave, NULL);
 
 #ifdef CNM_FPGA_PLATFORM
@@ -566,7 +558,10 @@ static VAStatus VpuApiDecOpen(
 )
 {
     PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
+    DDI_MEDIA_SURFACE *mediaSurface = DdiMedia_GetSurfaceFromVASurfaceID(mediaCtx, renderTargets[0]);
     CodStd bitFormat = STD_HEVC;
+    BOOL cbcrInterleave = FALSE;
+    BOOL nv21 = FALSE;
     VAProfile profile;
     VAEntrypoint entrypoint;
     uint32_t uiDecSliceMode;
@@ -615,13 +610,30 @@ static VAStatus VpuApiDecOpen(
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
+    switch (mediaSurface->format) {
+    case Media_Format_NV12:
+        cbcrInterleave = TRUE;
+        nv21           = FALSE;
+        break;
+    case Media_Format_NV21:
+        cbcrInterleave = TRUE;
+        nv21           = TRUE;
+        break;
+    case Media_Format_I420:
+        cbcrInterleave = FALSE;
+        nv21           = FALSE;
+        break;
+    default:
+        return VA_STATUS_ERROR_OPERATION_FAILED;
+    }
+
     mediaCtx->decOP.bitstreamFormat = bitFormat;
     mediaCtx->decOP.coreIdx         = 0;
     mediaCtx->decOP.bitstreamMode   = BS_MODE_PIC_END;
     mediaCtx->decOP.wtlEnable       = TRUE;
     mediaCtx->decOP.wtlMode         = FF_FRAME;
-    mediaCtx->decOP.cbcrInterleave  = FALSE;
-    mediaCtx->decOP.nv21            = FALSE;
+    mediaCtx->decOP.cbcrInterleave  = cbcrInterleave;
+    mediaCtx->decOP.nv21            = nv21;
     mediaCtx->decOP.streamEndian    = VDI_LITTLE_ENDIAN;
     mediaCtx->decOP.frameEndian     = VDI_LITTLE_ENDIAN;
     mediaCtx->decOP.vaEnable        = TRUE;
@@ -633,6 +645,8 @@ static VAStatus VpuApiDecOpen(
 
     printf("[CNM_VPUAPI] Success Open decoder instance: format %d\n", mediaCtx->decOP.bitstreamFormat);
 
+    mediaCtx->linearStride = mediaSurface->iPitch;
+    mediaCtx->linearHeight = mediaSurface->iHeight;
     mediaCtx->vaProfile = profile;
     mediaCtx->numOfRenderTargets = numRenderTargets;
     for (int32_t i = 0; i < mediaCtx->numOfRenderTargets; i++)
@@ -838,6 +852,68 @@ static VAStatus VpuApiDecPic(
         outputInfo.rdPtr, outputInfo.wrPtr,
         outputInfo.bytePosFrameStart, outputInfo.bytePosFrameEnd,
         outputInfo.dispPicWidth, outputInfo.dispPicHeight);
+
+#ifdef CNM_FPGA_PLATFORM
+    if (outputInfo.numOfErrMBs == 0) {
+        BOOL cbcrInterleave = mediaCtx->decOP.cbcrInterleave;
+        uint32_t lumaSize = 0, chromaSize = 0;
+        uint32_t fourcc = 0;
+        uint32_t lumaStride = 0;
+        uint32_t chromaUStride = 0;
+        uint32_t chromaVStride = 0;
+        uint32_t lumaOffset = 0;
+        uint32_t chromaUOffset = 0;
+        uint32_t chromaVOffset = 0;
+        uint32_t bufferName = 0;
+        void *buffer = NULL;
+        uint8_t* surfaceOffset;
+        uint8_t* dataY;
+        uint8_t* dataCb;
+        uint8_t* dataCr;
+
+        lumaSize = mediaCtx->linearStride * mediaCtx->linearHeight;
+        if (cbcrInterleave == FALSE)
+            chromaSize = (mediaCtx->linearStride/2) * (mediaCtx->linearHeight/2);
+        else
+            chromaSize = (mediaCtx->linearStride) * (mediaCtx->linearHeight/2);
+
+        printf("[CNM_VPUAPI] Linear Frame WxH : %dx%d\n", mediaCtx->linearStride, mediaCtx->linearHeight);
+        printf("[CNM_VPUAPI] lumaSize : %d\n", lumaSize);
+        printf("[CNM_VPUAPI] chromaSize : %d\n", chromaSize);
+
+        dataY  = (uint8_t*)osal_malloc(lumaSize);
+        dataCb = (uint8_t*)osal_malloc(chromaSize);
+        dataCr = (uint8_t*)osal_malloc(chromaSize);
+
+        vdi_read_memory(0, outputInfo.vaDecodeBufAddrY, dataY, lumaSize, VDI_LITTLE_ENDIAN);
+        vdi_read_memory(0, outputInfo.vaDecodeBufAddrCb, dataCb, chromaSize, VDI_LITTLE_ENDIAN);
+        if (cbcrInterleave == FALSE)
+            vdi_read_memory(0, outputInfo.vaDecodeBufAddrCr, dataCr, chromaSize, VDI_LITTLE_ENDIAN);
+
+        DdiMedia_LockSurface(ctx, mediaCtx->renderTarget,
+                             &fourcc,
+                             &lumaStride, &chromaUStride, &chromaVStride,
+                             &lumaOffset, &chromaUOffset, &chromaVOffset,
+                             &bufferName, &buffer);
+
+        surfaceOffset = (unsigned char*)buffer + lumaOffset;
+        memcpy(surfaceOffset, dataY, lumaSize);
+
+        surfaceOffset = (unsigned char*)buffer + chromaUOffset;
+        memcpy(surfaceOffset, dataCb, chromaSize);
+
+        if (cbcrInterleave == FALSE) {
+            surfaceOffset = (unsigned char*)buffer + chromaVOffset;
+            memcpy(surfaceOffset, dataCr, chromaSize);
+        }
+
+        DdiMedia_UnlockSurface(ctx, mediaCtx->renderTarget);
+
+        osal_free(dataY);
+        osal_free(dataCb);
+        osal_free(dataCr);
+    }
+#endif
 
     printf("[CNM_VPUAPI] SUCCESS VpuApiDecPic\n");
 
