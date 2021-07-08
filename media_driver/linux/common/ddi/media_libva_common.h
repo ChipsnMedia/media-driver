@@ -551,23 +551,27 @@ struct DDI_MEDIA_CONTEXT
 #endif
     bool m_apoMosEnabled;
 #ifdef CNM_VPUAPI_INTERFACE
-    DecHandle    decHandle;
-    DecOpenParam decOP;
-    VAProfile    vaProfile;
-    vpu_buffer_t paramBuf;
-    Uint32       paramSize;
-    vpu_buffer_t bsBuf;
-    Uint32       bsSize;
-    uint32_t     numOfSlice;
-    uint32_t     linearStride;
-    uint32_t     linearHeight;
-    VASurfaceID  renderTarget;
-    int          numOfRenderTargets;
-    uint32_t     minFrameBufferCount;
-    VASurfaceID  renderTargets[100];
-    FrameBuffer  frameBuf[100];
-    vpu_buffer_t frameBufMem[100];
-    bool         seqInited;
+    DecHandle         decHandle;
+    DecOpenParam      decOP;
+    VAProfile         vaProfile;
+    vpu_buffer_t      paramBuf;
+    Uint32            paramSize;
+    vpu_buffer_t      bsBuf;
+    Uint32            bsSize;
+    uint32_t          numOfSlice;
+    uint32_t          linearStride;
+    uint32_t          linearHeight;
+    VASurfaceID       renderTarget;
+    int32_t           numOfRenderTargets;
+    uint32_t          minFrameBufferCount;
+    VASurfaceID       renderTargets[100];
+    vpu_buffer_t      frameBufMem[100];
+    FrameBufferFormat wtlFormat;
+#ifdef CNM_FPGA_PLATFORM
+    vpu_buffer_t      linearFrameBufMem[100];
+    FrameBuffer       linearFrameBuf[100];
+#endif
+    bool              seqInited;
 #endif
 };
 
