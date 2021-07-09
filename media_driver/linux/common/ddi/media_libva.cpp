@@ -479,14 +479,11 @@ static void VpuApiDecParseSurfaceInfo(
             nv21           = TRUE;
             break;
         case Media_Format_I420:
-        case Media_Format_IYUV:
             wtlFormat      = FORMAT_420;
             cbcrInterleave = FALSE;
             nv21           = FALSE;
             break;
         case Media_Format_P010:
-        case Media_Format_P012:
-        case Media_Format_P016:
             wtlFormat      = FORMAT_420_P10_16BIT_LSB;
             cbcrInterleave = TRUE;
             nv21           = FALSE;
