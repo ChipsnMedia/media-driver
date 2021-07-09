@@ -445,8 +445,8 @@ static VAStatus AllocateFrameBuffer(
     frameBuf[fbCount].stride         = mediaCtx->linearStride;
     frameBuf[fbCount].height         = mediaCtx->linearHeight;
     frameBuf[fbCount].endian         = decOP.frameEndian;
-    frameBuf[fbCount].lumaBitDepth   = seqInfo.lumaBitdepth;
-    frameBuf[fbCount].chromaBitDepth = seqInfo.chromaBitdepth;
+    frameBuf[fbCount].lumaBitDepth   = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
+    frameBuf[fbCount].chromaBitDepth = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
 
     if (VPU_DecRegisterFrameBuffer(hdl, frameBuf, fbCount, fbStride, seqInfo.picHeight, COMPRESSED_FRAME_MAP) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] Failed to register frame buffer\n");
@@ -458,32 +458,44 @@ static VAStatus AllocateFrameBuffer(
 
 static void VpuApiDecParseSurfaceInfo(
     PDDI_MEDIA_CONTEXT  mediaCtx,
-    VASurfaceID         surfaceID
+    VASurfaceID         surfaceId
 )
 { 
     if (mediaCtx->numOfRenderTargets == 0) {
-        DDI_MEDIA_SURFACE *mediaSurface = DdiMedia_GetSurfaceFromVASurfaceID(mediaCtx, surfaceID);
+        DDI_MEDIA_SURFACE *mediaSurface = DdiMedia_GetSurfaceFromVASurfaceID(mediaCtx, surfaceId);
+        FrameBufferFormat wtlFormat = FORMAT_420;
         bool cbcrInterleave = FALSE;
         bool nv21 = FALSE;
 
         switch (mediaSurface->format) {
         case Media_Format_NV12:
+            wtlFormat      = FORMAT_420;
             cbcrInterleave = TRUE;
             nv21           = FALSE;
             break;
         case Media_Format_NV21:
+            wtlFormat      = FORMAT_420;
             cbcrInterleave = TRUE;
             nv21           = TRUE;
             break;
         case Media_Format_I420:
+        case Media_Format_IYUV:
+            wtlFormat      = FORMAT_420;
             cbcrInterleave = FALSE;
+            nv21           = FALSE;
+            break;
+        case Media_Format_P010:
+        case Media_Format_P012:
+        case Media_Format_P016:
+            wtlFormat      = FORMAT_420_P10_16BIT_LSB;
+            cbcrInterleave = TRUE;
             nv21           = FALSE;
             break;
         default:
             break;
         }
 
-        mediaCtx->wtlFormat            = FORMAT_420;
+        mediaCtx->wtlFormat            = wtlFormat;
         mediaCtx->decOP.cbcrInterleave = cbcrInterleave;
         mediaCtx->decOP.nv21           = nv21;
         mediaCtx->linearStride         = mediaSurface->iPitch;
@@ -493,7 +505,7 @@ static void VpuApiDecParseSurfaceInfo(
 #ifdef CNM_FPGA_PLATFORM
     AllocateLinearFrameBuffer(mediaCtx);
 #endif
-    mediaCtx->renderTargets[mediaCtx->numOfRenderTargets] = surfaceID;
+    mediaCtx->renderTargets[mediaCtx->numOfRenderTargets] = surfaceId;
     mediaCtx->numOfRenderTargets++;
 }
 
@@ -649,7 +661,6 @@ static VAStatus VpuApiDecOpen(
     printf("[CNM_VPUAPI] Success Open decoder instance: format %d\n", mediaCtx->decOP.bitstreamFormat);
 
     mediaCtx->vaProfile = profile;
-
     if (mediaCtx->paramBuf.phys_addr == 0) {
         mediaCtx->paramBuf.size = 0xA00000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->paramBuf, DEC_ETC, 0) < 0) {
@@ -657,7 +668,6 @@ static VAStatus VpuApiDecOpen(
             return VA_STATUS_ERROR_ALLOCATION_FAILED;
         }
     }
-
     if (mediaCtx->bsBuf.phys_addr == 0) {
         mediaCtx->bsBuf.size = 0xA00000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->bsBuf, DEC_BS, 0) < 0) {
