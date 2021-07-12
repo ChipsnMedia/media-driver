@@ -24,6 +24,44 @@
 
 #include "driver_loader.h"
 
+#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+std::vector<FeatureID> refFeatureIDTable_BXT = {
+    { VAProfileH264Main               , VAEntrypointVLD                 },
+    // { VAProfileH264Main               , VAEntrypointEncSlice            },
+    // { VAProfileH264Main               , VAEntrypointFEI                 },
+    // { VAProfileH264Main               , VAEntrypointEncSliceLP          },
+    { VAProfileH264High               , VAEntrypointVLD                 },
+    // { VAProfileH264High               , VAEntrypointEncSlice            },
+    // { VAProfileH264High               , VAEntrypointFEI                 },
+    // { VAProfileH264High               , VAEntrypointEncSliceLP          },
+    // { VAProfileH264ConstrainedBaseline, VAEntrypointVLD                 },
+    // { VAProfileH264ConstrainedBaseline, VAEntrypointEncSlice            },
+    // { VAProfileH264ConstrainedBaseline, VAEntrypointFEI                 },
+    // { VAProfileH264ConstrainedBaseline, VAEntrypointEncSliceLP          },
+    // { VAProfileMPEG2Simple            , VAEntrypointVLD                 },
+    // { VAProfileMPEG2Main              , VAEntrypointVLD                 },
+    // { VAProfileVC1Advanced            , VAEntrypointVLD                 },
+    // { VAProfileVC1Main                , VAEntrypointVLD                 },
+    // { VAProfileVC1Simple              , VAEntrypointVLD                 },
+    // { VAProfileJPEGBaseline           , VAEntrypointVLD                 },
+    // { VAProfileJPEGBaseline           , VAEntrypointEncPicture          },
+    // { VAProfileVP8Version0_3          , VAEntrypointVLD                 },
+    { VAProfileHEVCMain               , VAEntrypointVLD                 },
+    // { VAProfileHEVCMain               , VAEntrypointEncSlice            },
+    { VAProfileHEVCMain10             , VAEntrypointVLD                 },
+    // { VAProfileHEVCMain               , VAEntrypointFEI                 },
+    { VAProfileVP9Profile0            , VAEntrypointVLD                 },
+    // { VAProfileNone                   , VAEntrypointVideoProc           },
+    // { VAProfileNone                   , VAEntrypointStats               },
+#if defined(_CP_INCLUDED) && VA_CHECK_VERSION(1,11,0)
+    // { VAProfileProtected              , VAEntrypointProtectedTEEComm    },
+    // { VAProfileProtected              , VAEntrypointProtectedContent    },
+#endif
+    { VAProfileVP9Profile2            , VAEntrypointVLD                 },
+    { VAProfileAV1Profile0            , VAEntrypointVLD                 },
+    { VAProfileAV1Profile1            , VAEntrypointVLD                 },
+};
+#else
 std::vector<FeatureID> refFeatureIDTable_BXT = {
     { VAProfileH264Main               , VAEntrypointVLD                 },
     { VAProfileH264Main               , VAEntrypointEncSlice            },
@@ -57,5 +95,6 @@ std::vector<FeatureID> refFeatureIDTable_BXT = {
     { VAProfileProtected              , VAEntrypointProtectedContent    },
 #endif
 };
+#endif
 
 #endif // __REF_CAPS_TABLE_BXT_H__

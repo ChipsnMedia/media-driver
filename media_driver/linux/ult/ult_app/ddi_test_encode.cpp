@@ -155,15 +155,24 @@ void MediaEncodeDdiTest::EncodeExecute(EncTestData *pEncData, Platform_t platfor
 EncodeTestConfig::EncodeTestConfig()
 {
     m_mapPlatformFeatureID[DeviceConfigTable[igfxSKLAKE]]     = {
+#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+#else
         TEST_Intel_Encode_HEVC,
         TEST_Intel_Encode_AVC ,
+#endif
     };
     m_mapPlatformFeatureID[DeviceConfigTable[igfxBROXTON]]    = {
+#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+#else
         TEST_Intel_Encode_HEVC,
         TEST_Intel_Encode_AVC ,
+#endif
     };
     m_mapPlatformFeatureID[DeviceConfigTable[igfxBROADWELL]]  = {
+#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+#else
         TEST_Intel_Encode_AVC ,
+#endif
     };
 }
 

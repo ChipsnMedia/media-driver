@@ -23,7 +23,36 @@
 #define __REF_CAPS_TABLE_BDW_H__
 
 #include "driver_loader.h"
-
+#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+std::vector<FeatureID> refFeatureIDTable_BDW = {
+    { VAProfileH264Main               , VAEntrypointVLD                 },
+    // { VAProfileH264Main               , VAEntrypointEncSlice            },
+    // { VAProfileH264Main               , VAEntrypointFEI                 },
+    { VAProfileH264High               , VAEntrypointVLD                 },
+    // { VAProfileH264High               , VAEntrypointEncSlice            },
+    // { VAProfileH264High               , VAEntrypointFEI                 },
+    // { VAProfileH264ConstrainedBaseline, VAEntrypointVLD                 },
+    // { VAProfileH264ConstrainedBaseline, VAEntrypointEncSlice            },
+    // { VAProfileH264ConstrainedBaseline, VAEntrypointFEI                 },
+    // { VAProfileMPEG2Simple            , VAEntrypointVLD                 },
+    // { VAProfileMPEG2Simple            , VAEntrypointEncSlice            },
+    // { VAProfileMPEG2Main              , VAEntrypointVLD                 },
+    // { VAProfileMPEG2Main              , VAEntrypointEncSlice            },
+    // { VAProfileVC1Advanced            , VAEntrypointVLD                 },
+    // { VAProfileVC1Main                , VAEntrypointVLD                 },
+    // { VAProfileVC1Simple              , VAEntrypointVLD                 },
+    // { VAProfileJPEGBaseline           , VAEntrypointVLD                 },
+    // { VAProfileVP8Version0_3          , VAEntrypointVLD                 },
+    // { VAProfileNone                   , VAEntrypointVideoProc           },
+    // { VAProfileNone                   , VAEntrypointStats               },
+    { VAProfileHEVCMain               , VAEntrypointVLD                 },
+    { VAProfileHEVCMain10             , VAEntrypointVLD                 },
+    { VAProfileVP9Profile0            , VAEntrypointVLD                 },
+    { VAProfileVP9Profile2            , VAEntrypointVLD                 },
+    { VAProfileAV1Profile0            , VAEntrypointVLD                 },
+    { VAProfileAV1Profile1            , VAEntrypointVLD                 },
+};
+#else
 std::vector<FeatureID> refFeatureIDTable_BDW = {
     { VAProfileH264Main               , VAEntrypointVLD                 },
     { VAProfileH264Main               , VAEntrypointEncSlice            },
@@ -46,5 +75,6 @@ std::vector<FeatureID> refFeatureIDTable_BDW = {
     { VAProfileNone                   , VAEntrypointVideoProc           },
     { VAProfileNone                   , VAEntrypointStats               },
 };
+#endif
 
 #endif // __REF_CAPS_TABLE_BDW_H__

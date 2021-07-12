@@ -53,6 +53,13 @@
 #include "codechal_encoder_base.h"
 #include "media_libva_common.h"
 
+#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+#define VPUAPI_MAX_ATTRIBUTE ((int32_t)VAConfigAttribTypeMax)
+#define VPUAPI_MAX_PROFILE 31
+#define VPUAPI_MAX_ENTRYPOINT 7 
+#define VPUAPI_MAX_IMAGE_FORMATS 4 // VA_FOURCC_I420, VA_FOURCC_NV12, VA_FOURCC_NV21, VA_FOURCC_P010
+#define VPUAPI_MAX_SUBPIC_FORMATS           4    // no sub-pic blending support, still set to 4 for further implementation
+#endif
 #define DDI_CODEC_GEN_MAX_PROFILES                 31   //  the number of va profiles, some profiles in va_private.h
 #define DDI_CODEC_GEN_MAX_ENTRYPOINTS              7    // VAEntrypointVLD, VAEntrypointEncSlice, VAEntrypointEncSliceLP, VAEntrypointVideoProc
 

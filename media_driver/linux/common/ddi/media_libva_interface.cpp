@@ -48,10 +48,18 @@ VAStatus MediaLibvaInterface::LoadFunction(VADriverContextP ctx)
     ctx->pDriverData                         = nullptr;
     ctx->version_major                       = VA_MAJOR_VERSION;
     ctx->version_minor                       = VA_MINOR_VERSION;
+
+#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+    ctx->max_profiles                        = VPUAPI_MAX_PROFILE;
+    ctx->max_entrypoints                     = VPUAPI_MAX_ENTRYPOINT;
+    ctx->max_attributes                      = VPUAPI_MAX_ATTRIBUTE;
+    ctx->max_subpic_formats                  = VPUAPI_MAX_SUBPIC_FORMATS;
+#else
     ctx->max_profiles                        = DDI_CODEC_GEN_MAX_PROFILES;
     ctx->max_entrypoints                     = DDI_CODEC_GEN_MAX_ENTRYPOINTS;
     ctx->max_attributes                      = (int32_t)VAConfigAttribTypeMax;
     ctx->max_subpic_formats                  = DDI_CODEC_GEN_MAX_SUBPIC_FORMATS;
+#endif
     ctx->max_display_attributes              = DDI_CODEC_GEN_MAX_DISPLAY_ATTRIBUTES ;
     ctx->str_vendor                          = DDI_CODEC_GEN_STR_VENDOR;
     ctx->vtable_tpi                          = nullptr;
