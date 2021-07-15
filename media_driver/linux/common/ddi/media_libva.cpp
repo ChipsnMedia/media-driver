@@ -4535,6 +4535,9 @@ VAStatus DdiMedia_MapBufferInternal (
             break;
 
         case VASliceParameterBufferType:
+#ifdef CNM_VPUAPI_INTERFACE
+            *pbuf = (void *)(buf->pData + buf->uiOffset);
+#else
             ctxPtr = DdiMedia_GetCtxFromVABufferID(mediaCtx, buf_id);
             DDI_CHK_NULL(ctxPtr, "nullptr ctxPtr", VA_STATUS_ERROR_INVALID_CONTEXT);
 
@@ -4580,6 +4583,7 @@ VAStatus DdiMedia_MapBufferInternal (
                 default:
                     break;
             }
+#endif
             break;
 
         case VAEncCodedBufferType:
