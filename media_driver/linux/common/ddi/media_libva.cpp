@@ -332,7 +332,7 @@ static int32_t GetRenderTargetIndex(
 {
     int32_t index = -1;
 
-    for (int32_t i = 0; i < mediaCtx->numOfRenderTargets; i++) {
+    for (int32_t i = 0; i < MAX_VPUAPI_FB_NUM; i++) {
         if (mediaCtx->renderTargets[i] == renderTarget) {
             index = i;
             break;
@@ -523,6 +523,15 @@ static void AllocateLinearFrameBuffer(
     else
         mediaCtx->linearFrameBuf[index].bufCr = -1;
 }
+
+static void FreeLinearFrameBuffer(
+    PDDI_MEDIA_CONTEXT mediaCtx,
+    uint32_t           index
+)
+{
+    if (mediaCtx->linearFrameBufMem[index].size > 0)
+        vdi_free_dma_memory(0, &mediaCtx->linearFrameBufMem[index], DEC_FB_LINEAR, 0);
+}
 #endif
 
 static VAStatus AllocateFrameBuffer(
@@ -534,7 +543,7 @@ static VAStatus AllocateFrameBuffer(
     DecOpenParam decOP = mediaCtx->decOP;
     vpu_buffer_t* pVb = NULL;
     FrameBufferAllocInfo fbAllocInfo;
-    FrameBuffer frameBuf[100];
+    FrameBuffer frameBuf[MAX_VPUAPI_FB_NUM];
     FrameBufferFormat format = FORMAT_420;
     int32_t fbHeight = 0;
     int32_t fbStride = 0;
@@ -542,7 +551,7 @@ static VAStatus AllocateFrameBuffer(
     int32_t fbCount = 0;
 
     osal_memset(&fbAllocInfo, 0x00, sizeof(FrameBufferAllocInfo));
-    osal_memset(frameBuf,     0x00, sizeof(FrameBuffer)*100);
+    osal_memset(frameBuf,     0x00, sizeof(FrameBuffer)*MAX_VPUAPI_FB_NUM);
 
     format = (seqInfo.lumaBitdepth > 8 || seqInfo.chromaBitdepth > 8) ? FORMAT_420_P10_16BIT_LSB : FORMAT_420;
     if (decOP.bitstreamFormat == STD_VP9 || decOP.bitstreamFormat == STD_AV1) {
@@ -605,7 +614,7 @@ static VAStatus AllocateFrameBuffer(
     return VA_STATUS_SUCCESS;
 }
 
-static void VpuApiDecParseSurfaceInfo(
+static void VpuApiDecAddSurfaceInfo(
     PDDI_MEDIA_CONTEXT  mediaCtx,
     VASurfaceID         surfaceId
 )
@@ -653,6 +662,19 @@ static void VpuApiDecParseSurfaceInfo(
 #endif
     mediaCtx->renderTargets[mediaCtx->numOfRenderTargets] = surfaceId;
     mediaCtx->numOfRenderTargets++;
+}
+
+static void VpuApiDecRemoveSurfaceInfo(
+    PDDI_MEDIA_CONTEXT  mediaCtx,
+    VASurfaceID         surfaceId
+)
+{
+    uint32_t index = GetRenderTargetIndex(mediaCtx, surfaceId);
+#ifdef CNM_FPGA_PLATFORM
+    FreeLinearFrameBuffer(mediaCtx, index);
+#endif
+    mediaCtx->renderTargets[index] = VA_INVALID_SURFACE;
+    mediaCtx->numOfRenderTargets--;
 }
 
 static VAStatus VpuApiInit(void)
@@ -905,13 +927,9 @@ static void VpuApiDecClose(
     PDDI_DECODE_CONTEXT decCtx = (PDDI_DECODE_CONTEXT)DdiMedia_GetContextFromContextID(ctx, context, &ctxType);
     uint32_t decIndex = (uint32_t)context & DDI_MEDIA_MASK_VACONTEXTID;
 
-    for (int32_t index = 0; index < 100; index++) {
+    for (int32_t index = 0; index < MAX_VPUAPI_FB_NUM; index++) {
         if (mediaCtx->frameBufMem[index].size > 0)
             vdi_free_dma_memory(0, &mediaCtx->frameBufMem[index], DEC_FBC, 0);
-#ifdef CNM_FPGA_PLATFORM
-        if (mediaCtx->linearFrameBufMem[index].size > 0)
-            vdi_free_dma_memory(0, &mediaCtx->linearFrameBufMem[index], DEC_FB_LINEAR, 0);
-#endif
     }
 
     if (mediaCtx->paramBuf.size != 0)
@@ -3689,6 +3707,9 @@ VAStatus DdiMedia_DestroySurfaces (
         DdiMediaUtil_ReleasePMediaSurfaceFromHeap(mediaCtx->pSurfaceHeap, (uint32_t)surfaces[i]);
         mediaCtx->uiNumSurfaces--;
         DdiMediaUtil_UnLockMutex(&mediaCtx->SurfaceMutex);
+#ifdef CNM_VPUAPI_INTERFACE
+        VpuApiDecRemoveSurfaceInfo(mediaCtx, surfaces[i]);
+#endif
     }
 
     MOS_TraceEventExt(EVENT_VA_FREE_SURFACE, EVENT_TYPE_END, nullptr, 0, nullptr, 0);
@@ -4048,7 +4069,7 @@ VAStatus DdiMedia_CreateSurfaces2(
             return VA_STATUS_ERROR_ALLOCATION_FAILED;
         }
 #ifdef CNM_VPUAPI_INTERFACE
-        VpuApiDecParseSurfaceInfo(mediaCtx, vaSurfaceID);
+        VpuApiDecAddSurfaceInfo(mediaCtx, vaSurfaceID);
 #endif
     }
 
