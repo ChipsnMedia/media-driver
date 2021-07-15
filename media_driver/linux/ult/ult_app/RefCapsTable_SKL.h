@@ -33,7 +33,7 @@ std::vector<FeatureID> refFeatureIDTable_SKL = {
     // { VAProfileH264High               , VAEntrypointEncSlice            },
     // { VAProfileH264High               , VAEntrypointFEI                 },
     // { VAProfileH264High               , VAEntrypointEncSliceLP          },
-    // { VAProfileH264ConstrainedBaseline, VAEntrypointVLD                 },
+    { VAProfileH264ConstrainedBaseline, VAEntrypointVLD                 },
     // { VAProfileH264ConstrainedBaseline, VAEntrypointEncSlice            },
     // { VAProfileH264ConstrainedBaseline, VAEntrypointFEI                 },
     // { VAProfileH264ConstrainedBaseline, VAEntrypointEncSliceLP          },

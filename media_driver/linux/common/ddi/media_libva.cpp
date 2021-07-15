@@ -129,7 +129,7 @@ const VAImageFormat s_supportedImageformatsVPU[] =
     {VA_FOURCC_P010,           VA_LSB_FIRST,   24, 0,0,0,0,0},
 };
 #define VPUAPI_DECODER_CONFIG_ID_START 0
-#define VPUAPI_DECODER_CONFIG_ID_LEN 1
+#define VPUAPI_DECODER_CONFIG_ID_LEN 1024
 #define VPUAPI_ENCODER_CONFIG_ID_START (VPUAPI_DECODER_CONFIG_ID_START+VPUAPI_DECODER_CONFIG_ID_LEN)
 #define VPUAPI_ENCODER_CONFIG_ID_LEN 1
 
@@ -175,7 +175,7 @@ static int VpuApiCapInit()
     j = 0;
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -186,7 +186,20 @@ static int VpuApiCapInit()
     j++;
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+4; // to be compatible with INTEL codec
+    attrMap[j].actual_profile = capMap[i].profile;
+    attrMap[j].actual_entrypoint = VAEntrypointVLD;
+
+    i++;
+    capMap[i].profile = VAProfileH264ConstrainedBaseline;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    j++;
+    attrMap[j].attrType = VAConfigAttribDecSliceMode;
+    attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x08; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -197,7 +210,8 @@ static int VpuApiCapInit()
     j++;
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x12; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -208,7 +222,8 @@ static int VpuApiCapInit()
     j++;
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x16; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -219,7 +234,8 @@ static int VpuApiCapInit()
     j++;
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x1b; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -230,7 +246,8 @@ static int VpuApiCapInit()
     j++;
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x1f; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -241,7 +258,8 @@ static int VpuApiCapInit()
     j++;
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x20; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -252,7 +270,8 @@ static int VpuApiCapInit()
     j++;
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
+    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x20; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -3131,6 +3150,7 @@ VAStatus DdiMedia_QueryConfigEntrypoints(
 )
 {
     DDI_FUNCTION_ENTER();
+    // printf("[CNM_DEBUG]+%s profile=0x%x\n", __FUNCTION__, profile);
 
     PERF_UTILITY_START_ONCE("First Frame Time", PERF_MOS, PERF_LEVEL_DDI);
 
@@ -3151,18 +3171,36 @@ VAStatus DdiMedia_QueryConfigEntrypoints(
         int i;
         int j;
         int32_t num=0;
+        bool find_profile = false;
+        status = VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
+        *num_entrypoints = 0;
         for (i=0; i < VPUAPI_MAX_PROFILE; i++) {
+            if (s_vpuApiCaps[i].profile == VAProfileNone) {
+                continue;
+            }
             if (s_vpuApiCaps[i].profile == profile) {
-                for (j=0; j < s_vpuApiCaps[i].sizeOfEntrypoints; j++) {
-                    entrypoint_list[num] = s_vpuApiCaps[i].entrypoint[j];
-                    num++;
-                }
+                find_profile = true;
                 break;
             }
         }
-        *num_entrypoints = num;
+        if (find_profile == true) {
+            for (i=0; i < VPUAPI_MAX_PROFILE; i++) {
+                if (s_vpuApiCaps[i].profile == profile) {
+                    for (j=0; j < s_vpuApiCaps[i].sizeOfEntrypoints; j++) {
+                        entrypoint_list[num] = s_vpuApiCaps[i].entrypoint[j];
+                        num++;
+                    }
+                    status = VA_STATUS_SUCCESS;
+                    *num_entrypoints = num;
+                    break;
+                }
+            }
+        }
+        else {
+            status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
+        }
     }
-    status = VA_STATUS_SUCCESS;
+    // printf("[CNM_DEBUG]-%s profile=0x%x, status=0x%x, num_entrypoints=%d\n", __FUNCTION__, profile, status, *num_entrypoints);
     return status;
 #else
     return mediaCtx->m_caps->QueryConfigEntrypoints(profile,
@@ -3192,15 +3230,21 @@ VAStatus DdiMedia_QueryConfigProfiles (
     {
         int i;
         int32_t num=0; 
+        // workaround of vaapi/libva-utils/test/test_va_api_query_config.cpp bug that is not check the size of num_profiles. 
+        for (i=0; i < VPUAPI_MAX_PROFILE; i++) {
+            profile_list[i] = (VAProfile)(VAProfileProtected+1); // assign unknown profile in default value.
+        }
         for (i=0; i < VPUAPI_MAX_PROFILE; i++) {
             if (s_vpuApiCaps[i].profile != VAProfileNone) {
-                profile_list[i] = s_vpuApiCaps[i].profile;
+                profile_list[num] = s_vpuApiCaps[i].profile;
                 num++;
             }
         }
         *num_profiles = num;
+        status = VA_STATUS_SUCCESS;
     }
-    status = VA_STATUS_SUCCESS;
+
+    // printf("[CNM_DEBUG]-%s num_profiles=%d\n", __FUNCTION__, *num_profiles);
     return status;
 #else
     return mediaCtx->m_caps->QueryConfigProfiles(profile_list, num_profiles);
@@ -3218,6 +3262,7 @@ VAStatus DdiMedia_QueryConfigAttributes (
 {
     DDI_FUNCTION_ENTER();
 
+    // printf("[CNM_DEBUG]+%s config_id=0x%x\n", __FUNCTION__, config_id);
     DDI_CHK_NULL(profile,     "nullptr profile", VA_STATUS_ERROR_INVALID_PARAMETER);
     DDI_CHK_NULL(entrypoint,  "nullptr entrypoint", VA_STATUS_ERROR_INVALID_PARAMETER);
     DDI_CHK_NULL(ctx,         "nullptr Ctx", VA_STATUS_ERROR_INVALID_CONTEXT);
@@ -3234,18 +3279,25 @@ VAStatus DdiMedia_QueryConfigAttributes (
     {
         int i;
         int j;
-        int idx = 0;
+        int num = 0;
+        *profile = VAProfileNone;
         for (i=0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
             if (s_vpuApiAttrs[i].configId == config_id) {
-                *profile = s_vpuApiAttrs[i].actual_profile;
-                *entrypoint = s_vpuApiAttrs[i].actual_entrypoint;
-                attrib_list[idx].type = s_vpuApiAttrs[i].attrType; 
-                attrib_list[idx].value = s_vpuApiAttrs[i].value; 
-                idx++;
+                if (s_vpuApiAttrs[i].actual_profile != VAProfileNone) {
+                    *profile = s_vpuApiAttrs[i].actual_profile;
+                    *entrypoint = s_vpuApiAttrs[i].actual_entrypoint;
+                    // printf("[CNM_DEBUG]     >>> i=%d, num=%d,   profile=0x%x, entrypoint=0x%x, attrType=0x%x, attrValue=0x%x\n", i, num, *profile, *entrypoint, s_vpuApiAttrs[i].attrType, s_vpuApiAttrs[i].value);
+                    attrib_list[num].type = s_vpuApiAttrs[i].attrType; 
+                    attrib_list[num].value = s_vpuApiAttrs[i].value; 
+                    num++;
+                    break;
+                }
             }
         }
+        *num_attribs = num;
     }
     status = VA_STATUS_SUCCESS;
+    // printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, num_attribs=%d\n", __FUNCTION__, *profile, *entrypoint, *num_attribs);
     return status;
 #else
     return mediaCtx->m_caps->QueryConfigAttributes(
@@ -3265,7 +3317,7 @@ VAStatus DdiMedia_CreateConfig (
     VAStatus status;
     DDI_FUNCTION_ENTER();
 
-    printf("[CNM_TEST]  %s profile=0x%x, entrypoint=0x%x \n", __FUNCTION__, profile, entrypoint);
+    // printf("[CNM_DEBUG]+%s profile=0x%x, entrypoint=0x%x, num_attribs=%d\n", __FUNCTION__, profile, entrypoint, num_attribs);
     DDI_CHK_NULL(ctx,       "nullptr ctx",       VA_STATUS_ERROR_INVALID_CONTEXT);
     DDI_CHK_NULL(config_id, "nullptr config_id", VA_STATUS_ERROR_INVALID_PARAMETER);
 
@@ -3280,127 +3332,154 @@ VAStatus DdiMedia_CreateConfig (
         int i;
         int j;
         int found_config_id = 0xffffffff;
+        bool find_profile = false;
+        bool find_entrypoint = false;
         for (i=0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
             if (s_vpuApiAttrs[i].actual_profile == VAProfileNone) {
                 continue;
             }
-            if (s_vpuApiAttrs[i].actual_profile == profile && s_vpuApiAttrs[i].actual_entrypoint == entrypoint) {
-                bool is_valid_attr = false;
-                for (j=0; j < num_attribs; j++) {
-                    bool found_valid_attr = false;
-                    if (attrib_list[j].type == s_vpuApiAttrs[i].attrType) {
-                        found_valid_attr = true;
-                    }
-                    if (found_valid_attr == true) {
-                        if (attrib_list[j].value == 0 /* Define for empty attrib */) {
-                            is_valid_attr = true;
-                            continue;
+            if (s_vpuApiAttrs[i].actual_profile == profile) {
+                find_profile = true;
+                if (s_vpuApiAttrs[i].actual_entrypoint == entrypoint) {
+                    find_entrypoint = true;
+                }
+            }
+        }
+        if (find_profile == true && find_entrypoint == true) {
+            for (i=0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
+                if (s_vpuApiAttrs[i].actual_profile == VAProfileNone) {
+                    continue;
+                }
+                // printf("[CNM_DEBUG]  %s profile actual_profile=0x%x, actual_entrypoint=0x%x \n", __FUNCTION__, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
+   
+                if (s_vpuApiAttrs[i].actual_profile == profile && s_vpuApiAttrs[i].actual_entrypoint == entrypoint) {
+                    bool is_valid_attr = false;
+                    for (j=0; j < num_attribs; j++) {
+                        bool found_valid_attr = false;
+                        //   printf("[CNM_DEBUG]  %s list type=0x%x, type_list=0x%x \n", __FUNCTION__, s_vpuApiAttrs[i].attrType, attrib_list[j].type);
+   
+                        if (attrib_list[j].type == s_vpuApiAttrs[i].attrType) {
+                            found_valid_attr = true;
                         }
-                        if (attrib_list[j].type == VAConfigAttribRTFormat 
-                        || attrib_list[j].type == VAConfigAttribDecSliceMode
-                        || attrib_list[j].type == VAConfigAttribDecJPEG
-                        || attrib_list[j].type == VAConfigAttribRateControl
-                        || attrib_list[j].type == VAConfigAttribEncPackedHeaders
-                        || attrib_list[j].type == VAConfigAttribEncIntraRefresh
-                        || attrib_list[j].type == VAConfigAttribFEIFunctionType
-                        || attrib_list[j].type == VAConfigAttribEncryption) {
-                            if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
+                        if (found_valid_attr == true) {
+                            // printf("[CNM_DEBUG]  %s found_valid_attr type=0x%x, type_list=0x%x, value_list=0x%x \n", __FUNCTION__, s_vpuApiAttrs[i].attrType, attrib_list[j].type, attrib_list[j].value);
+   
+                            if (attrib_list[j].value == 0 /* Define for empty attrib */) {
                                 is_valid_attr = true;
                                 continue;
                             }
-                            else if (attrib_list[j].type == VAConfigAttribRTFormat) {
-                                return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+                            if (attrib_list[j].type == VAConfigAttribRTFormat 
+                            || attrib_list[j].type == VAConfigAttribDecSliceMode
+                            || attrib_list[j].type == VAConfigAttribDecJPEG
+                            || attrib_list[j].type == VAConfigAttribRateControl
+                            || attrib_list[j].type == VAConfigAttribEncPackedHeaders
+                            || attrib_list[j].type == VAConfigAttribEncIntraRefresh
+                            || attrib_list[j].type == VAConfigAttribFEIFunctionType
+                            || attrib_list[j].type == VAConfigAttribEncryption) {
+                                if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
+                                    is_valid_attr = true;
+                                    continue;
+                                }
+                                else if (attrib_list[j].type == VAConfigAttribRTFormat) {
+                                    return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+                                }
                             }
-                        }
-                        else if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
-                            is_valid_attr = true;
-                            continue;
-                        }
-#if 0 // will be added when wave encoder is applied
-                        else if (attrib_list[j].type == VAConfigAttribEncSliceStructure) {
-                            if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
+                            else if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
                                 is_valid_attr = true;
                                 continue;
                             }
+    #if 0 // will be added when wave encoder is applied
+                            else if (attrib_list[j].type == VAConfigAttribEncSliceStructure) {
+                                if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
+                                    is_valid_attr = true;
+                                    continue;
+                                }
 
-                            if ((s_vpuApiAttrs[i].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS)) {
-                                if ((attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_EQUAL_MULTI_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_POWER_OF_TWO_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_ROWS)) {
+                                if ((s_vpuApiAttrs[i].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS)) {
+                                    if ((attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_EQUAL_MULTI_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_POWER_OF_TWO_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_ROWS)) {
+                                        is_valid_attr = true;
+                                        continue;
+                                    }
+                                }
+                                else if ((s_vpuApiAttrs[i].value & (VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS | VA_ENC_SLICE_STRUCTURE_MAX_SLICE_SIZE))) {
+                                    if ((attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS)
+                                    || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_POWER_OF_TWO_ROWS)
+                                    || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_ROWS)) {
+                                        is_valid_attr = true;
+                                        continue;
+                                    }
+                                }
+                            }
+    #endif
+                            else if ((attrib_list[j].type == VAConfigAttribMaxPictureWidth) || (attrib_list[j].type == VAConfigAttribMaxPictureHeight) || (attrib_list[j].type == VAConfigAttribEncROI) || (attrib_list[j].type == VAConfigAttribEncDirtyRect)) {
+                                if (attrib_list[j].value <= s_vpuApiAttrs[i].value) {
                                     is_valid_attr = true;
                                     continue;
                                 }
                             }
-                            else if ((s_vpuApiAttrs[i].value & (VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS | VA_ENC_SLICE_STRUCTURE_MAX_SLICE_SIZE))) {
-                                if ((attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS)
-                                || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_POWER_OF_TWO_ROWS)
-                                || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_ROWS)) {
+    #if 0 // will be added when wave encoder is applied
+                            else if (attrib_list[j].type == VAConfigAttribEncMaxRefFrames) {
+                                if (((attrib_list[j].value & 0xffff) <= (s_vpuApiAttrs[i].value & 0xffff)) && (attrib_list[j].value <= s_vpuApiAttrs[i].value)) { //high16 bit  can compare with this way
                                     is_valid_attr = true;
                                     continue;
                                 }
                             }
+                            else if(attrib_list[j].type == VAConfigAttribEncJPEG) {
+                                VAConfigAttribValEncJPEG jpegValue, jpegSetValue;
+                                jpegValue.value = attrib_list[j].value;
+                                jpegSetValue.value = s_vpuApiCaps[i].attrMap[k].value;
+                                if ((jpegValue.bits.max_num_quantization_tables <= jpegSetValue.bits.max_num_quantization_tables) 
+                                && (jpegValue.bits.max_num_huffman_tables <= jpegSetValue.bits.max_num_huffman_tables) 
+                                && (jpegValue.bits.max_num_scans <= jpegSetValue.bits.max_num_scans) 
+                                && (jpegValue.bits.max_num_components <= jpegSetValue.bits.max_num_components)) {
+                                    is_valid_attr = true;
+                                    continue;
+                                }
+                            }
+    #endif
                         }
-#endif
-                        else if ((attrib_list[j].type == VAConfigAttribMaxPictureWidth) || (attrib_list[j].type == VAConfigAttribMaxPictureHeight) || (attrib_list[j].type == VAConfigAttribEncROI) || (attrib_list[j].type == VAConfigAttribEncDirtyRect)) {
-                            if (attrib_list[j].value <= s_vpuApiAttrs[i].value) {
+    #if 0 // it is for INTEL
+                        else {
+                            if((profile == VAProfileNone) && (attrib_list[j].type == VAConfigAttribStats)) {
                                 is_valid_attr = true;
                                 continue;
                             }
                         }
-#if 0 // will be added when wave encoder is applied
-                        else if (attrib_list[j].type == VAConfigAttribEncMaxRefFrames) {
-                            if (((attrib_list[j].value & 0xffff) <= (s_vpuApiAttrs[i].value & 0xffff)) && (attrib_list[j].value <= s_vpuApiAttrs[i].value)) { //high16 bit  can compare with this way
-                                is_valid_attr = true;
-                                continue;
-                            }
-                        }
-                        else if(attrib_list[j].type == VAConfigAttribEncJPEG) {
-                            VAConfigAttribValEncJPEG jpegValue, jpegSetValue;
-                            jpegValue.value = attrib_list[j].value;
-                            jpegSetValue.value = s_vpuApiCaps[i].attrMap[k].value;
-                            if ((jpegValue.bits.max_num_quantization_tables <= jpegSetValue.bits.max_num_quantization_tables) 
-                            && (jpegValue.bits.max_num_huffman_tables <= jpegSetValue.bits.max_num_huffman_tables) 
-                            && (jpegValue.bits.max_num_scans <= jpegSetValue.bits.max_num_scans) 
-                            && (jpegValue.bits.max_num_components <= jpegSetValue.bits.max_num_components)) {
-                                is_valid_attr = true;
-                                continue;
-                            }
-                        }
-#endif
+    #endif
                     }
-#if 0 // it is for INTEL
+
+                    if (num_attribs == 0) {
+                        is_valid_attr = true; // num_attrbis is 0 means user wants to get config_id without matching flavor attribute.
+                    }
+                    if (is_valid_attr == false) {
+                        *config_id =  0xffffffff; 
+                        // printf("[CNM_DEBUG]-%s configid=0x%x, status=0x%x, VA_STATUS_ERROR_INVALID_VALUE\n", __FUNCTION__, *config_id, VA_STATUS_ERROR_INVALID_VALUE);
+                        return VA_STATUS_ERROR_INVALID_VALUE;
+                    }
                     else {
-                        if((profile == VAProfileNone) && (attrib_list[j].type == VAConfigAttribStats)) {
-                            is_valid_attr = true;
-                            continue;
-                        }
-                    }
-#endif
-                }
-                if (is_valid_attr == false) {
-                    return VA_STATUS_ERROR_INVALID_VALUE;
-                }
-                else {
                     found_config_id = s_vpuApiAttrs[i].configId;
+                    }
                 }
             }
         }
 
-        if (entrypoint == VAEntrypointVLD) {
-            // entrypoint is decoder
-            *config_id = found_config_id; 
-            status = VA_STATUS_SUCCESS;
-        }
-        else if ((entrypoint == VAEntrypointEncSlice) || (entrypoint == VAEntrypointEncSliceLP) || (entrypoint == VAEntrypointEncPicture) || (entrypoint == VAEntrypointFEI) || (entrypoint == VAEntrypointStats)) {
-            // entrypoint is encoder. will be updated when wave6 is appliced. 
-            status = VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
-        }
-        else if (entrypoint == VAEntrypointVideoProc) {
-            // entrypoint is videoprocessing 
-            status = VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
+        if (find_profile == false) {
+            *config_id =  0xffffffff; 
+            status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
         }
         else {
-            status = VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
+            if (find_entrypoint == false) {
+                *config_id =  0xffffffff; 
+                status = VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
+            }
+            else {
+                // entrypoint is decoder
+                *config_id = found_config_id; 
+                status = VA_STATUS_SUCCESS;
+            }
         }
     }
+    // printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, status=0x%x, config_id=0x%x\n", __FUNCTION__, profile, entrypoint, status, *config_id);
     return status;
 #else
     return mediaCtx->m_caps->CreateConfig(
@@ -3454,14 +3533,68 @@ VAStatus DdiMedia_GetConfigAttributes(
 {
     DDI_FUNCTION_ENTER();
 
+    printf("+%s profile=0x%x, entrypoint=0x%x, num_attribs=%d\n", __FUNCTION__, profile, entrypoint, num_attribs);
     DDI_CHK_NULL(ctx,       "nullptr ctx",       VA_STATUS_ERROR_INVALID_CONTEXT);
 
     PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
     DDI_CHK_NULL(mediaCtx, "nullptr mediaCtx", VA_STATUS_ERROR_INVALID_CONTEXT);
     DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
 
+#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+    VAStatus status;
+
+    status = mediaCtx->m_caps->GetConfigAttributes(
+            profile, entrypoint, attrib_list, num_attribs);
+    {
+        int i;
+        int j;
+        bool find_profile = false;
+        bool find_entrypoint = false;
+        for (i=0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
+            if (s_vpuApiAttrs[i].actual_profile == VAProfileNone) {
+                continue;
+            }
+            if (s_vpuApiAttrs[i].actual_profile == profile) {
+                find_profile = true;
+                if (s_vpuApiAttrs[i].actual_entrypoint == entrypoint) {
+                    find_entrypoint = true;
+                }
+            }
+        }
+        if (find_profile == true && find_entrypoint == true) {
+            for (i=0; i < num_attribs; i++) {
+                for (j=0; j < VPUAPI_MAX_ATTRIBUTE; j++) {
+                    // printf("+%s j=%d, profile=0x%x, entrypoint=0x%x\n", __FUNCTION__, j, s_vpuApiAttrs[j].actual_profile, s_vpuApiAttrs[j].actual_entrypoint);
+                    if (s_vpuApiAttrs[j].actual_profile == VAProfileNone) {
+                        continue;
+                    }
+                    if ((s_vpuApiAttrs[j].actual_profile == profile) && (s_vpuApiAttrs[j].actual_entrypoint == entrypoint)) {
+                        if (attrib_list[i].type == s_vpuApiAttrs[j].attrType) {
+                            // printf("%s find i=%d, j=%d, profile=0x%x, entrypoint=0x%x, type1=0x%x, type2=0x%x \n", __FUNCTION__, i, j, profile, entrypoint, attrib_list[i].type, s_vpuApiAttrs[i].attrType);
+                            attrib_list[i].value = s_vpuApiAttrs[j].value;
+                        }
+                        else {
+                            attrib_list[i].value = VA_ATTRIB_NOT_SUPPORTED;
+                        }
+                    }
+                }
+            }
+            status = VA_STATUS_SUCCESS;
+        }
+        else if (find_profile == false) {
+            status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE; // if there is no matched profile in all attributes
+        }
+        else {
+            status = VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT; // if there is no matched profile in all attributes
+        }
+
+    }
+    printf("-%s status=0x%x\n", __FUNCTION__, status);
+    return status;
+#else
     return mediaCtx->m_caps->GetConfigAttributes(
             profile, entrypoint, attrib_list, num_attribs);
+#endif
 }
 
 VAStatus DdiMedia_CreateSurfaces (
