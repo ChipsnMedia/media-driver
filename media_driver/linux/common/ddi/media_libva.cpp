@@ -342,7 +342,7 @@ static int32_t GetRenderTargetIndex(
     return index;
 }
 
-static void* ConvertParamBuffer(
+static void* ConvertBufferData(
     PDDI_MEDIA_CONTEXT  mediaCtx,
     VABufferType        type,
     uint32_t            size,
@@ -351,15 +351,14 @@ static void* ConvertParamBuffer(
 {
     void* convData = NULL;
 
+    convData = calloc(size, 1);
+    memcpy(convData, data, size);
+
     switch (mediaCtx->decOP.bitstreamFormat) {
         case STD_VP9:
         {
             if (type == VAPictureParameterBufferType) {
-                VADecPictureParameterBufferVP9* vp9PicParam = NULL;
-                convData = malloc(size);
-                memcpy(convData, data, size);
-
-                vp9PicParam = (VADecPictureParameterBufferVP9*)convData;
+                VADecPictureParameterBufferVP9* vp9PicParam = (VADecPictureParameterBufferVP9*)convData;
                 for (int32_t i = 0; i < 8; i++)
                     vp9PicParam->reference_frames[i] = GetRenderTargetIndex(mediaCtx, vp9PicParam->reference_frames[i]);
             }
@@ -368,11 +367,7 @@ static void* ConvertParamBuffer(
         case STD_AV1:
         {
             if (type == VAPictureParameterBufferType) {
-                VADecPictureParameterBufferAV1* av1PicParam = NULL;
-                convData = malloc(size);
-                memcpy(convData, data, size);
-                
-                av1PicParam = (VADecPictureParameterBufferAV1*)data;
+                VADecPictureParameterBufferAV1* av1PicParam = (VADecPictureParameterBufferAV1*)convData;
                 av1PicParam->current_frame = GetRenderTargetIndex(mediaCtx, av1PicParam->current_frame);
                 av1PicParam->current_display_picture = GetRenderTargetIndex(mediaCtx, av1PicParam->current_display_picture);
 
@@ -386,11 +381,7 @@ static void* ConvertParamBuffer(
         case STD_AVC:
         {
             if (type == VAPictureParameterBufferType) {
-                VAPictureParameterBufferH264* avcPicParam = NULL;
-                convData = malloc(size);
-                memcpy(convData, data, size);
-
-                avcPicParam = (VAPictureParameterBufferH264*)data;
+                VAPictureParameterBufferH264* avcPicParam = (VAPictureParameterBufferH264*)convData;
                 avcPicParam->CurrPic.picture_id = GetRenderTargetIndex(mediaCtx, avcPicParam->CurrPic.picture_id);
                 for (int32_t i = 0; i < 16; i++) {
                     if (avcPicParam->ReferenceFrames[i].picture_id != VA_INVALID_SURFACE)
@@ -398,11 +389,7 @@ static void* ConvertParamBuffer(
                 }
             }
             else if (type == VASliceParameterBufferType) {
-                VASliceParameterBufferH264* avcSliceParam = NULL;
-                convData = malloc(size);
-                memcpy(convData, data, size);
-
-                avcSliceParam = (VASliceParameterBufferH264*)data;
+                VASliceParameterBufferH264* avcSliceParam = (VASliceParameterBufferH264*)convData;
 
                 for (uint32_t i = 0; i < 32; i++) {
                     if ((avcSliceParam->RefPicList0[i].picture_id != VA_INVALID_SURFACE) &&
@@ -448,9 +435,6 @@ static void* ConvertParamBuffer(
                 VAPictureParameterBufferHEVC* hevcPicParam = NULL;
                 VAPictureParameterBufferHEVCRext* hevcRextParam = NULL;
                 VAPictureParameterBufferHEVCScc* hevcSccParam = NULL;
-
-                convData = calloc(size, 1);
-                memcpy(convData, data, size);
 
                 if (isRext) {
                     hevcPicParam = &((VAPictureParameterBufferHEVCExtension*)convData)->base;
@@ -771,9 +755,7 @@ static VAStatus VpuApiDecCreateBuffer(
         return va;
     }
 
-    convData = ConvertParamBuffer(mediaCtx, type, size, (uint8_t*)data);
-    if (convData != NULL)
-        data = convData;
+    convData = ConvertBufferData(mediaCtx, type, size, (uint8_t*)data);
 
     switch ((int32_t)type) {
     case VASliceParameterBufferType:
@@ -784,11 +766,11 @@ static VAStatus VpuApiDecCreateBuffer(
         printf("[CNM_VPUAPI] type : %d | numElements : %d\n", type, numElements);
         printf("[CNM_VPUAPI] paramBuf.phys_addr : 0x%x | size : %d\n", mediaCtx->paramBuf.phys_addr + mediaCtx->paramSize, size);
 
-        vdi_write_memory(0, mediaCtx->paramBuf.phys_addr + mediaCtx->paramSize, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
+        vdi_write_memory(0, mediaCtx->paramBuf.phys_addr + mediaCtx->paramSize, (Uint8*)convData, size, VDI_LITTLE_ENDIAN);
         mediaCtx->paramSize += VPU_ALIGN16(size);
         break;
     case VASliceDataBufferType:
-        vdi_write_memory(0, mediaCtx->bsBuf.phys_addr, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
+        vdi_write_memory(0, mediaCtx->bsBuf.phys_addr, (Uint8*)convData, size, VDI_LITTLE_ENDIAN);
         mediaCtx->bsSize = size;
 
         printf("[CNM_VPUAPI] type : %d | numElements : %d\n", type, numElements);
