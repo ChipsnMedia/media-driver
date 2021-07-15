@@ -659,6 +659,13 @@ static VAStatus VpuApiInit(void)
     Uint16* pusBitCode;
     RetCode ret = RETCODE_SUCCESS;
 
+#ifdef CNM_FPGA_PLATFORM
+    vdi_init(0);
+    vdi_set_timing_opt(0);
+    vdi_hw_reset(0);
+    vdi_release(0);
+#endif
+
     productId = VPU_GetProductId(0);
     if (productId == -1) {
         printf("[CNM_VPUAPI] Failed to get product ID. %d\n", productId);
@@ -689,16 +696,61 @@ static void VpuApiDeInit(void)
     printf("[CNM_VPUAPI] Success DeInit VPU\n");
 }
 
-static VAStatus VpuApiDecReadBuffer(
+static VAStatus VpuApiDecCreateBuffer(
     VADriverContextP  ctx,
+    void             *ctxPtr,
     VABufferType      type,
     uint32_t          size,
     uint32_t          numElements,
-    void             *data
+    void             *data,
+    VABufferID       *bufId
 )
 {
     PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
+    VAStatus va = VA_STATUS_SUCCESS;
+    MOS_STATUS mos = MOS_STATUS_SUCCESS;
+    PDDI_MEDIA_BUFFER_HEAP_ELEMENT bufferHeapElement;
+    DDI_MEDIA_BUFFER *buf;
     void *convData = NULL;
+
+    buf = (DDI_MEDIA_BUFFER *)MOS_AllocAndZeroMemory(sizeof(DDI_MEDIA_BUFFER));
+    if (nullptr == buf) {
+        va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+        return va;
+    }
+
+    buf->uiNumElements = numElements;
+    buf->iSize         = size * numElements;
+    buf->uiType        = type;
+    buf->format        = Media_Format_CPU;
+    buf->uiOffset      = 0;
+    buf->pMediaCtx     = mediaCtx;
+
+    va = DdiMediaUtil_CreateBuffer(buf, mediaCtx->pDrmBufMgr);
+    if (va != VA_STATUS_SUCCESS) {
+        MOS_FreeMemory(buf);
+        return va;
+    }
+
+    bufferHeapElement = DdiMediaUtil_AllocPMediaBufferFromHeap(mediaCtx->pBufferHeap);
+    if (nullptr == bufferHeapElement) {
+        DdiMediaUtil_FreeBuffer(buf);
+        MOS_FreeMemory(buf);
+        va = VA_STATUS_ERROR_MAX_NUM_EXCEEDED;
+        return va;
+    }
+
+    bufferHeapElement->pBuffer   = buf;
+    bufferHeapElement->pCtx      = ctxPtr;
+    bufferHeapElement->uiCtxType = DDI_MEDIA_CONTEXT_TYPE_DECODER;
+
+    *bufId = bufferHeapElement->uiVaBufferID;
+    mediaCtx->uiNumBufs++;
+    mos = MOS_SecureMemcpy((void *)(buf->pData + buf->uiOffset), size * numElements, data, size * numElements);
+    if (mos != MOS_STATUS_SUCCESS) {
+        va = VA_STATUS_ERROR_OPERATION_FAILED;
+        return va;
+    }
 
     convData = ConvertParamBuffer(mediaCtx, type, size, (uint8_t*)data);
     if (convData != NULL)
@@ -728,15 +780,19 @@ static VAStatus VpuApiDecReadBuffer(
     if (convData != NULL)
         free(convData);
 
-    return VA_STATUS_SUCCESS;
+    return va;
 }
 
 static VAStatus VpuApiDecOpen(
-    VADriverContextP ctx,
-    VAConfigID       configId
+    VADriverContextP  ctx,
+    VAConfigID        configId,
+    VAContextID      *context
 )
 {
     PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
+    PDDI_MEDIA_VACONTEXT_HEAP_ELEMENT contextHeapElement;
+    VAStatus va = VA_STATUS_SUCCESS;
+    PDDI_DECODE_CONTEXT decCtx = (PDDI_DECODE_CONTEXT)MOS_AllocAndZeroMemory(sizeof(DDI_DECODE_CONTEXT));
     CodStd bitFormat = STD_HEVC;
     VAProfile profile;
     VAEntrypoint entrypoint;
@@ -797,9 +853,23 @@ static VAStatus VpuApiDecOpen(
 
     if (VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] Failed to Open decoder instance\n");
-        return VA_STATUS_ERROR_OPERATION_FAILED;
+        va = VA_STATUS_ERROR_OPERATION_FAILED;
+        return va;
     }
     VPU_DecGiveCommand(mediaCtx->decHandle, DEC_SET_WTL_FRAME_FORMAT, &mediaCtx->wtlFormat);
+
+    DdiMediaUtil_LockMutex(&mediaCtx->DecoderMutex);
+    contextHeapElement = DdiMediaUtil_AllocPVAContextFromHeap(mediaCtx->pDecoderCtxHeap);
+    if (nullptr == contextHeapElement) {
+        DdiMediaUtil_UnLockMutex(&mediaCtx->DecoderMutex);
+        va = VA_STATUS_ERROR_MAX_NUM_EXCEEDED;
+        return va;
+    }
+
+    contextHeapElement->pVaContext = (void*)decCtx;
+    mediaCtx->uiNumDecoders++;
+    *context = (VAContextID)(contextHeapElement->uiVaContextID + DDI_MEDIA_VACONTEXTID_OFFSET_DECODER);
+    DdiMediaUtil_UnLockMutex(&mediaCtx->DecoderMutex);
 
     printf("[CNM_VPUAPI] Success Open decoder instance: format %d\n", mediaCtx->decOP.bitstreamFormat);
 
@@ -808,25 +878,31 @@ static VAStatus VpuApiDecOpen(
         mediaCtx->paramBuf.size = 0xA00000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->paramBuf, DEC_ETC, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory paramBuf\n");
-            return VA_STATUS_ERROR_ALLOCATION_FAILED;
+            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+            return va;
         }
     }
     if (mediaCtx->bsBuf.phys_addr == 0) {
         mediaCtx->bsBuf.size = 0xA00000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->bsBuf, DEC_BS, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory bsBuf\n");
-            return VA_STATUS_ERROR_ALLOCATION_FAILED;
+            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+            return va;
         }
     }
 
-    return VA_STATUS_SUCCESS;
+    return va;
 }
 
 static void VpuApiDecClose(
-    VADriverContextP ctx
+    VADriverContextP ctx,
+    VAContextID      context
 )
 {
     PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
+    uint32_t ctxType;
+    PDDI_DECODE_CONTEXT decCtx = (PDDI_DECODE_CONTEXT)DdiMedia_GetContextFromContextID(ctx, context, &ctxType);
+    uint32_t decIndex = (uint32_t)context & DDI_MEDIA_MASK_VACONTEXTID;
 
     for (int32_t index = 0; index < 100; index++) {
         if (mediaCtx->frameBufMem[index].size > 0)
@@ -843,6 +919,13 @@ static void VpuApiDecClose(
         vdi_free_dma_memory(0, &mediaCtx->bsBuf, DEC_BS, 0);
 
     VPU_DecClose(mediaCtx->decHandle);
+
+    DdiMediaUtil_LockMutex(&mediaCtx->DecoderMutex);
+    DdiMediaUtil_ReleasePVAContextFromHeap(mediaCtx->pDecoderCtxHeap, decIndex);
+    mediaCtx->uiNumDecoders--;
+    DdiMediaUtil_UnLockMutex(&mediaCtx->DecoderMutex);
+
+    MOS_FreeMemory(decCtx);
 
     printf("[CNM_VPUAPI] Success Close decoder instance\n");
 }
@@ -4102,9 +4185,10 @@ VAStatus DdiMedia_CreateContext (
 #endif
     if(mediaDrvCtx->m_caps->IsDecConfigId(config_id))
     {
-        vaStatus = DdiDecode_CreateContext(ctx, config_id - DDI_CODEC_GEN_CONFIG_ATTRIBUTES_DEC_BASE, picture_width, picture_height, flag, render_targets, num_render_targets, context);
 #ifdef CNM_VPUAPI_INTERFACE
-        vaStatus = VpuApiDecOpen(ctx, config_id - DDI_CODEC_GEN_CONFIG_ATTRIBUTES_DEC_BASE);
+        vaStatus = VpuApiDecOpen(ctx, config_id - DDI_CODEC_GEN_CONFIG_ATTRIBUTES_DEC_BASE, context);
+#else
+        vaStatus = DdiDecode_CreateContext(ctx, config_id - DDI_CODEC_GEN_CONFIG_ATTRIBUTES_DEC_BASE, picture_width, picture_height, flag, render_targets, num_render_targets, context);
 #endif
     }
     else if(mediaDrvCtx->m_caps->IsEncConfigId(config_id))
@@ -4140,10 +4224,12 @@ VAStatus DdiMedia_DestroyContext (
     {
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
 #ifdef CNM_VPUAPI_INTERFACE
-            VpuApiDecClose(ctx);
+            VpuApiDecClose(ctx, context);
             VpuApiDeInit();
-#endif
+            return VA_STATUS_SUCCESS;
+#else
             return DdiDecode_DestroyContext(ctx, context);
+#endif
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             return DdiEncode_DestroyContext(ctx, context);
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -4188,9 +4274,10 @@ VAStatus DdiMedia_CreateBuffer (
     switch (ctxType)
     {
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
-            va = DdiDecode_CreateBuffer(ctx, DdiDecode_GetDecContextFromPVOID(ctxPtr), type, size, num_elements, data, bufId);
 #ifdef CNM_VPUAPI_INTERFACE
-            va = VpuApiDecReadBuffer(ctx, type, size, num_elements, data);
+            va = VpuApiDecCreateBuffer(ctx, ctxPtr, type, size, num_elements, data, bufId);
+#else
+            va = DdiDecode_CreateBuffer(ctx, DdiDecode_GetDecContextFromPVOID(ctxPtr), type, size, num_elements, data, bufId);
 #endif
             break;
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
@@ -4684,6 +4771,9 @@ VAStatus DdiMedia_DestroyBuffer (
             DDI_CHK_NULL(ctxPtr, "nullptr ctxPtr", VA_STATUS_ERROR_INVALID_CONTEXT);
             decCtx = DdiDecode_GetDecContextFromPVOID(ctxPtr);
             bufMgr = &(decCtx->BufMgr);
+#ifdef CNM_VPUAPI_INTERFACE
+            DdiMediaUtil_FreeBuffer(buf);
+#endif
             break;
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             DDI_CHK_NULL(ctxPtr, "nullptr ctxPtr", VA_STATUS_ERROR_INVALID_CONTEXT);
@@ -4881,8 +4971,10 @@ VAStatus DdiMedia_BeginPicture (
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
 #ifdef CNM_VPUAPI_INTERFACE
             mediaCtx->renderTarget = render_target;
-#endif
+            return VA_STATUS_SUCCESS;
+#else
             return DdiDecode_BeginPicture(ctx, context, render_target);
+#endif
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             return DdiEncode_BeginPicture(ctx, context, render_target);
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -4924,7 +5016,11 @@ VAStatus DdiMedia_RenderPicture (
     switch (ctxType)
     {
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
+#ifdef CNM_VPUAPI_INTERFACE
+            return VA_STATUS_SUCCESS;
+#else
             return DdiDecode_RenderPicture(ctx, context, buffers, num_buffers);
+#endif
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             return DdiEncode_RenderPicture(ctx, context, buffers, num_buffers);
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -4951,10 +5047,11 @@ VAStatus DdiMedia_EndPicture (
     switch (ctxType)
     {
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
-            vaStatus = DdiDecode_EndPicture(ctx, context);
 #ifdef CNM_VPUAPI_INTERFACE
             vaStatus = VpuApiDecSeqInit(ctx);
             vaStatus = VpuApiDecPic(ctx);
+#else
+            vaStatus = DdiDecode_EndPicture(ctx, context);
 #endif
             break;
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
