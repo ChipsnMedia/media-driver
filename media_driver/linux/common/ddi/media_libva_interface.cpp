@@ -49,7 +49,7 @@ VAStatus MediaLibvaInterface::LoadFunction(VADriverContextP ctx)
     ctx->version_major                       = VA_MAJOR_VERSION;
     ctx->version_minor                       = VA_MINOR_VERSION;
 
-#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+#ifdef CNM_VPUAPI_INTERFACE
     ctx->max_profiles                        = VPUAPI_MAX_PROFILE;
     ctx->max_entrypoints                     = VPUAPI_MAX_ENTRYPOINT;
     ctx->max_attributes                      = VPUAPI_MAX_ATTRIBUTE;
