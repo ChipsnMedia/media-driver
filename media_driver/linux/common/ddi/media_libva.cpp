@@ -211,7 +211,6 @@ static int VpuApiCapInit()
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
     attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x12; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -223,7 +222,6 @@ static int VpuApiCapInit()
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
     attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x16; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -235,7 +233,6 @@ static int VpuApiCapInit()
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
     attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x1b; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -247,7 +244,6 @@ static int VpuApiCapInit()
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
     attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x1f; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -259,7 +255,6 @@ static int VpuApiCapInit()
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
     attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x20; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -271,7 +266,6 @@ static int VpuApiCapInit()
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
     attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x20; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -819,14 +813,7 @@ static VAStatus VpuApiDecOpen(
     CodStd bitFormat = STD_HEVC;
     VAProfile profile;
     VAEntrypoint entrypoint;
-#ifdef CNM_VPUAPI_INTERFACE
-#else
-    uint32_t uiDecSliceMode;
-    uint32_t uiEncryptionType;
-    uint32_t uiDecProcessingType;
-#endif
 
-#ifdef CNM_VPUAPI_INTERFACE
     {
         int i;
         bool find_valid_config_id = false;
@@ -845,16 +832,7 @@ static VAStatus VpuApiDecOpen(
         profile = s_vpuApiAttrs[i].actual_profile;
         entrypoint = s_vpuApiAttrs[i].actual_entrypoint;
     }
-#else
-    DDI_CHK_RET(mediaCtx->m_caps->GetDecConfigAttr(
-        configId + DDI_CODEC_GEN_CONFIG_ATTRIBUTES_DEC_BASE,
-        &profile,
-        &entrypoint,
-        &uiDecSliceMode,
-        &uiEncryptionType,
-        &uiDecProcessingType),"Invalide config_id!");
-#endif
-
+    printf("%s configId = 0x%x, profile=0x%x, entrypoint=0x%x \n", __FUNCTION__, configId, profile, entrypoint);
 
     switch (profile) {
     case VAProfileH264High:
@@ -863,23 +841,11 @@ static VAStatus VpuApiDecOpen(
         bitFormat = STD_AVC;
         break;
     case VAProfileVP9Profile0:
-    case VAProfileVP9Profile1:
     case VAProfileVP9Profile2:
-    case VAProfileVP9Profile3:
         bitFormat = STD_VP9;
         break;
     case VAProfileHEVCMain:
     case VAProfileHEVCMain10:
-    case VAProfileHEVCMain12:
-    case VAProfileHEVCMain422_10:
-    case VAProfileHEVCMain422_12:
-    case VAProfileHEVCMain444:
-    case VAProfileHEVCMain444_10:
-    case VAProfileHEVCMain444_12:
-    case VAProfileHEVCSccMain:
-    case VAProfileHEVCSccMain10:
-    case VAProfileHEVCSccMain444:
-    case VAProfileHEVCSccMain444_10:
         bitFormat = STD_HEVC;
         break;
     case VAProfileAV1Profile0:
@@ -887,6 +853,7 @@ static VAStatus VpuApiDecOpen(
         bitFormat = STD_AV1;
         break;
     default:
+         printf("[CNM_VPUAPI] not supported profile=0x%x\n", profile);
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
@@ -4383,6 +4350,10 @@ VAStatus DdiMedia_CreateContext (
         if (find_entrypoint == VAEntrypointVLD) { // decoder
             vaStatus = VpuApiDecOpen(ctx, config_id, context);
         }
+        else {
+            DDI_ASSERTMESSAGE("DDI: Invalid config_id");
+            vaStatus = VA_STATUS_ERROR_INVALID_CONFIG;
+        }
     }
 #else
     if(mediaDrvCtx->m_caps->IsDecConfigId(config_id))
@@ -4659,9 +4630,6 @@ VAStatus DdiMedia_MapBufferInternal (
             break;
 
         case VASliceParameterBufferType:
-#ifdef CNM_VPUAPI_INTERFACE
-            *pbuf = (void *)(buf->pData + buf->uiOffset);
-#else
             ctxPtr = DdiMedia_GetCtxFromVABufferID(mediaCtx, buf_id);
             DDI_CHK_NULL(ctxPtr, "nullptr ctxPtr", VA_STATUS_ERROR_INVALID_CONTEXT);
 
@@ -4707,7 +4675,6 @@ VAStatus DdiMedia_MapBufferInternal (
                 default:
                     break;
             }
-#endif
             break;
 
         case VAEncCodedBufferType:
@@ -5038,9 +5005,10 @@ VAStatus DdiMedia_DestroyBuffer (
             DDI_CHK_NULL(ctxPtr, "nullptr ctxPtr", VA_STATUS_ERROR_INVALID_CONTEXT);
             DdiMediaUtil_FreeBuffer(buf);
             break;
+        case DDI_MEDIA_CONTEXT_TYPE_MEDIA:
+            break;
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
         case DDI_MEDIA_CONTEXT_TYPE_VP:
-        case DDI_MEDIA_CONTEXT_TYPE_MEDIA:
         case DDI_MEDIA_CONTEXT_TYPE_PROTECTED:
             return VA_STATUS_ERROR_INVALID_BUFFER;
         default:
@@ -5053,9 +5021,6 @@ VAStatus DdiMedia_DestroyBuffer (
             DDI_CHK_NULL(ctxPtr, "nullptr ctxPtr", VA_STATUS_ERROR_INVALID_CONTEXT);
             decCtx = DdiDecode_GetDecContextFromPVOID(ctxPtr);
             bufMgr = &(decCtx->BufMgr);
-#ifdef CNM_VPUAPI_INTERFACE
-            DdiMediaUtil_FreeBuffer(buf);
-#endif
             break;
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             DDI_CHK_NULL(ctxPtr, "nullptr ctxPtr", VA_STATUS_ERROR_INVALID_CONTEXT);
@@ -5359,6 +5324,7 @@ VAStatus DdiMedia_EndPicture (
         case DDI_MEDIA_CONTEXT_TYPE_VP:
             DDI_ASSERTMESSAGE("DDI: unsupported context in DdiCodec_EndPicture.");
             vaStatus = VA_STATUS_ERROR_INVALID_CONTEXT;
+        break;
 #else
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             vaStatus = DdiEncode_EndPicture(ctx, context);
