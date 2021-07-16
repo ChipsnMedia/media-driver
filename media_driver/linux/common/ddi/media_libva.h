@@ -53,7 +53,7 @@
 #include "codechal_encoder_base.h"
 #include "media_libva_common.h"
 
-#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+#ifdef CNM_VPUAPI_INTERFACE
 #define VPUAPI_MAX_ATTRIBUTE ((int32_t)VAConfigAttribTypeMax)
 #define VPUAPI_MAX_PROFILE 31
 #define VPUAPI_MAX_ENTRYPOINT 7 

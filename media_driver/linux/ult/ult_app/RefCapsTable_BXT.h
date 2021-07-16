@@ -24,7 +24,7 @@
 
 #include "driver_loader.h"
 
-#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+#ifdef CNM_VPUAPI_INTERFACE
 std::vector<FeatureID> refFeatureIDTable_BXT = {
     { VAProfileH264Main               , VAEntrypointVLD                 },
     // { VAProfileH264Main               , VAEntrypointEncSlice            },

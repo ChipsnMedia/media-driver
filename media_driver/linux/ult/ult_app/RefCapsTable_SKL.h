@@ -23,7 +23,7 @@
 #define __REF_CAPS_TABLE_SKL_H__
 
 #include "driver_loader.h"
-#ifdef CNM_VPUAPI_INTERFACE_PROFILE_ENTRYPOINT
+#ifdef CNM_VPUAPI_INTERFACE
 std::vector<FeatureID> refFeatureIDTable_SKL = {
     { VAProfileH264Main               , VAEntrypointVLD                 },
     // { VAProfileH264Main               , VAEntrypointEncSlice            },
