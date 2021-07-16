@@ -87,6 +87,10 @@ static int32_t atrace_switch            = 0;
 #define UMD_ATRACE_END                  __noop
 #endif
 
+#ifdef CNM_VPUAPI_INTERFACE
+#define MAX_VPUAPI_FB_NUM 100
+#endif
+
 #define DDI_UNUSED(param)                      MOS_UNUSED(param)
 
 #define DDI_MEDIA_MAX_SURFACE_NUMBER_CONTEXT   127
@@ -564,12 +568,12 @@ struct DDI_MEDIA_CONTEXT
     VASurfaceID       renderTarget;
     int32_t           numOfRenderTargets;
     uint32_t          minFrameBufferCount;
-    VASurfaceID       renderTargets[100];
-    vpu_buffer_t      frameBufMem[100];
+    VASurfaceID       renderTargets[MAX_VPUAPI_FB_NUM];
+    vpu_buffer_t      frameBufMem[MAX_VPUAPI_FB_NUM];
     FrameBufferFormat wtlFormat;
 #ifdef CNM_FPGA_PLATFORM
-    vpu_buffer_t      linearFrameBufMem[100];
-    FrameBuffer       linearFrameBuf[100];
+    vpu_buffer_t      linearFrameBufMem[MAX_VPUAPI_FB_NUM];
+    FrameBuffer       linearFrameBuf[MAX_VPUAPI_FB_NUM];
 #endif
     bool              seqInited;
 #endif
