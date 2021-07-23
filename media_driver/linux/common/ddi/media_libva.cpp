@@ -187,7 +187,6 @@ static int VpuApiCapInit()
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
     attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+4; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -199,7 +198,6 @@ static int VpuApiCapInit()
     attrMap[j].attrType = VAConfigAttribDecSliceMode;
     attrMap[j].value = VA_DEC_SLICE_MODE_NORMAL;
     attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+j;
-    attrMap[j].configId = VPUAPI_DECODER_CONFIG_ID_START+0x08; // to be compatible with INTEL codec
     attrMap[j].actual_profile = capMap[i].profile;
     attrMap[j].actual_entrypoint = VAEntrypointVLD;
 
@@ -324,7 +322,7 @@ static int32_t GetRenderTargetIndex(
 {
     int32_t index = -1;
 
-    for (int32_t i = 0; i < MAX_VPUAPI_FB_NUM; i++) {
+    for (int32_t i = 0; i < VPUAPI_MAX_FB_NUM; i++) {
         if (mediaCtx->renderTargets[i] == renderTarget) {
             index = i;
             break;
@@ -535,7 +533,7 @@ static VAStatus AllocateFrameBuffer(
     DecOpenParam decOP = mediaCtx->decOP;
     vpu_buffer_t* pVb = NULL;
     FrameBufferAllocInfo fbAllocInfo;
-    FrameBuffer frameBuf[MAX_VPUAPI_FB_NUM];
+    FrameBuffer frameBuf[VPUAPI_MAX_FB_NUM];
     FrameBufferFormat format = FORMAT_420;
     int32_t fbHeight = 0;
     int32_t fbStride = 0;
@@ -543,7 +541,7 @@ static VAStatus AllocateFrameBuffer(
     int32_t fbCount = 0;
 
     osal_memset(&fbAllocInfo, 0x00, sizeof(FrameBufferAllocInfo));
-    osal_memset(frameBuf,     0x00, sizeof(FrameBuffer)*MAX_VPUAPI_FB_NUM);
+    osal_memset(frameBuf,     0x00, sizeof(FrameBuffer)*VPUAPI_MAX_FB_NUM);
 
     format = (seqInfo.lumaBitdepth > 8 || seqInfo.chromaBitdepth > 8) ? FORMAT_420_P10_16BIT_LSB : FORMAT_420;
     if (decOP.bitstreamFormat == STD_VP9 || decOP.bitstreamFormat == STD_AV1) {
@@ -763,6 +761,10 @@ static VAStatus VpuApiDecCreateBuffer(
 
     *bufId = bufferHeapElement->uiVaBufferID;
     mediaCtx->uiNumBufs++;
+
+    if (nullptr == data)
+        return va;
+
     mos = MOS_SecureMemcpy((void *)(buf->pData + buf->uiOffset), size * numElements, data, size * numElements);
     if (mos != MOS_STATUS_SUCCESS) {
         va = VA_STATUS_ERROR_OPERATION_FAILED;
@@ -801,6 +803,8 @@ static VAStatus VpuApiDecCreateBuffer(
 static VAStatus VpuApiDecOpen(
     VADriverContextP  ctx,
     VAConfigID        configId,
+    int32_t           pictureWidth,
+    int32_t           pictureHeight,
     VAContextID      *context
 )
 {
@@ -811,26 +815,26 @@ static VAStatus VpuApiDecOpen(
     CodStd bitFormat = STD_HEVC;
     VAProfile profile;
     VAEntrypoint entrypoint;
+    bool findValidConfigId = false;
+    uint32_t i = 0;
 
-    {
-        int i;
-        bool find_valid_config_id = false;
-        for (i=0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
-            if (s_vpuApiAttrs[i].actual_profile == VAProfileNone) {
-                continue;
-            }
-            if (s_vpuApiAttrs[i].configId == configId) {
-                find_valid_config_id = true;
-                break;
-            }
+    for (i = 0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
+        if (s_vpuApiAttrs[i].actual_profile == VAProfileNone) {
+            continue;
         }
-        if (find_valid_config_id == false) {
-            return VA_STATUS_ERROR_INVALID_CONFIG;
+        if (s_vpuApiAttrs[i].configId == configId) {
+            findValidConfigId = true;
+            break;
         }
-        profile = s_vpuApiAttrs[i].actual_profile;
-        entrypoint = s_vpuApiAttrs[i].actual_entrypoint;
     }
-    printf("%s configId = 0x%x, profile=0x%x, entrypoint=0x%x \n", __FUNCTION__, configId, profile, entrypoint);
+    if (findValidConfigId == false) {
+        return VA_STATUS_ERROR_INVALID_CONFIG;
+    }
+    profile    = s_vpuApiAttrs[i].actual_profile;
+    entrypoint = s_vpuApiAttrs[i].actual_entrypoint;
+
+    if (pictureWidth > VPUAPI_MAX_PIC_WIDTH || pictureHeight > VPUAPI_MAX_PIC_HEIGHT)
+        return VA_STATUS_ERROR_RESOLUTION_NOT_SUPPORTED;
 
     switch (profile) {
     case VAProfileH264High:
@@ -917,7 +921,7 @@ static void VpuApiDecClose(
     PDDI_DECODE_CONTEXT decCtx = (PDDI_DECODE_CONTEXT)DdiMedia_GetContextFromContextID(ctx, context, &ctxType);
     uint32_t decIndex = (uint32_t)context & DDI_MEDIA_MASK_VACONTEXTID;
 
-    for (int32_t index = 0; index < MAX_VPUAPI_FB_NUM; index++) {
+    for (int32_t index = 0; index < VPUAPI_MAX_FB_NUM; index++) {
         if (mediaCtx->frameBufMem[index].size > 0)
             vdi_free_dma_memory(0, &mediaCtx->frameBufMem[index], DEC_FBC, 0);
     }
@@ -4317,34 +4321,12 @@ VAStatus DdiMedia_CreateContext (
 
     VAStatus vaStatus = VA_STATUS_SUCCESS;
 #ifdef CNM_VPUAPI_INTERFACE
-    {
-        int i;
-        bool find_valid_config_id = false;
-        // VAProfile find_profile = VAProfileNone;
-        VAEntrypoint find_entrypoint;
-        for (i=0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
-            if (s_vpuApiAttrs[i].actual_profile == VAProfileNone) {
-                continue;
-            }
-            if (s_vpuApiAttrs[i].configId == config_id) {
-                find_valid_config_id = true;
-                break;
-            }
-        }
-        if (find_valid_config_id == false) {
-            DDI_ASSERTMESSAGE("DDI: Invalid config_id");
-            vaStatus = VA_STATUS_ERROR_INVALID_CONFIG;
-        }
-        // find_profile = s_vpuApiAttrs[i].actual_profile;
-        find_entrypoint = s_vpuApiAttrs[i].actual_entrypoint;
-        vaStatus = VpuApiInit();
-        if (find_entrypoint == VAEntrypointVLD) { // decoder
-            vaStatus = VpuApiDecOpen(ctx, config_id, context);
-        }
-        else {
-            DDI_ASSERTMESSAGE("DDI: Invalid config_id");
-            vaStatus = VA_STATUS_ERROR_INVALID_CONFIG;
-        }
+    vaStatus = VpuApiInit();
+    if (config_id < VPUAPI_ENCODER_CONFIG_ID_START) {
+        vaStatus = VpuApiDecOpen(ctx, config_id, picture_width, picture_height, context);
+    } else {
+        DDI_ASSERTMESSAGE("DDI: Invalid config_id");
+        vaStatus = VA_STATUS_ERROR_INVALID_CONFIG;
     }
 #else
     if(mediaDrvCtx->m_caps->IsDecConfigId(config_id))
@@ -5839,7 +5821,7 @@ VAStatus DdiMedia_QueryImageFormats (
         num++;
     }
     *num_formats = num;
-    status = VA_STATUS_SUCCESS; 
+    status = VA_STATUS_SUCCESS;
     return status;
 #else
     return mediaCtx->m_caps->QueryImageFormats(format_list, num_formats);
