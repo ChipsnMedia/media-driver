@@ -276,9 +276,7 @@ static int VpuApiCapInit()
     s_sizeOfVpuapiCapMap = i+1;
     return (i+1);
 }
-#endif
 
-#ifdef CNM_VPUAPI_INTERFACE
 Int32 LoadFirmware(
     Int32       productId,
     Uint8**     retFirmware,
@@ -3151,14 +3149,9 @@ VAStatus DdiMedia_QueryConfigEntrypoints(
     DDI_CHK_NULL(mediaCtx, "nullptr mediaCtx", VA_STATUS_ERROR_INVALID_CONTEXT);
 #ifdef CNM_VPUAPI_INTERFACE
     DDI_CHK_CONDITION((s_sizeOfVpuapiCapMap == 0), "VpuApiCapInit is not allced", VA_STATUS_ERROR_INVALID_CONFIG);
-#else
-    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
-#endif
-
     DDI_CHK_NULL(entrypoint_list, "nullptr entrypoint_list", VA_STATUS_ERROR_INVALID_PARAMETER);
     DDI_CHK_NULL(num_entrypoints, "nullptr num_entrypoints", VA_STATUS_ERROR_INVALID_PARAMETER);
 
-#ifdef CNM_VPUAPI_INTERFACE
     VAStatus status;
 
     {
@@ -3198,6 +3191,10 @@ VAStatus DdiMedia_QueryConfigEntrypoints(
     // printf("[CNM_DEBUG]-%s profile=0x%x, status=0x%x, num_entrypoints=%d\n", __FUNCTION__, profile, status, *num_entrypoints);
     return status;
 #else
+    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
+    DDI_CHK_NULL(entrypoint_list, "nullptr entrypoint_list", VA_STATUS_ERROR_INVALID_PARAMETER);
+    DDI_CHK_NULL(num_entrypoints, "nullptr num_entrypoints", VA_STATUS_ERROR_INVALID_PARAMETER);
+
     return mediaCtx->m_caps->QueryConfigEntrypoints(profile,
             entrypoint_list, num_entrypoints);
 #endif
@@ -3217,12 +3214,9 @@ VAStatus DdiMedia_QueryConfigProfiles (
     DDI_CHK_NULL(mediaCtx, "nullptr mediaCtx", VA_STATUS_ERROR_INVALID_CONTEXT);
 #ifdef CNM_VPUAPI_INTERFACE
     DDI_CHK_CONDITION((s_sizeOfVpuapiCapMap == 0), "VpuApiCapInit is not allced", VA_STATUS_ERROR_INVALID_CONFIG);
-#else
-    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
-#endif
     DDI_CHK_NULL(profile_list, "nullptr profile_list", VA_STATUS_ERROR_INVALID_PARAMETER);
     DDI_CHK_NULL(num_profiles, "nullptr num_profiles", VA_STATUS_ERROR_INVALID_PARAMETER);
-#ifdef CNM_VPUAPI_INTERFACE
+
     VAStatus status;
 
     {
@@ -3245,6 +3239,10 @@ VAStatus DdiMedia_QueryConfigProfiles (
     // printf("[CNM_DEBUG]-%s num_profiles=%d\n", __FUNCTION__, *num_profiles);
     return status;
 #else
+    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
+    DDI_CHK_NULL(profile_list, "nullptr profile_list", VA_STATUS_ERROR_INVALID_PARAMETER);
+    DDI_CHK_NULL(num_profiles, "nullptr num_profiles", VA_STATUS_ERROR_INVALID_PARAMETER);
+
     return mediaCtx->m_caps->QueryConfigProfiles(profile_list, num_profiles);
 #endif
 }
@@ -3270,11 +3268,7 @@ VAStatus DdiMedia_QueryConfigAttributes (
     DDI_CHK_NULL(mediaCtx,   "nullptr mediaCtx", VA_STATUS_ERROR_INVALID_CONTEXT);
 #ifdef CNM_VPUAPI_INTERFACE
     DDI_CHK_CONDITION((s_sizeOfVpuapiCapMap == 0), "VpuApiCapInit is not allced", VA_STATUS_ERROR_INVALID_CONFIG);
-#else
-    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
-#endif
 
-#ifdef CNM_VPUAPI_INTERFACE
     VAStatus status;
 
     {
@@ -3301,6 +3295,8 @@ VAStatus DdiMedia_QueryConfigAttributes (
     // printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, num_attribs=%d\n", __FUNCTION__, *profile, *entrypoint, *num_attribs);
     return status;
 #else
+    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
+
     return mediaCtx->m_caps->QueryConfigAttributes(
                 config_id, profile, entrypoint, attrib_list, num_attribs);
 #endif
@@ -3326,10 +3322,7 @@ VAStatus DdiMedia_CreateConfig (
     DDI_CHK_NULL(mediaCtx, "nullptr mediaCtx", VA_STATUS_ERROR_INVALID_CONTEXT);
 #ifdef CNM_VPUAPI_INTERFACE
     DDI_CHK_CONDITION((s_sizeOfVpuapiCapMap == 0), "VpuApiCapInit is not allced", VA_STATUS_ERROR_INVALID_CONFIG);
-#else
-    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
-#endif
-#ifdef CNM_VPUAPI_INTERFACE
+
     {
         int i;
         int j;
@@ -3390,7 +3383,7 @@ VAStatus DdiMedia_CreateConfig (
                                 is_valid_attr = true;
                                 continue;
                             }
-    #if 0 // will be added when wave encoder is applied
+#if 0 // will be added when wave encoder is applied
                             else if (attrib_list[j].type == VAConfigAttribEncSliceStructure) {
                                 if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
                                     is_valid_attr = true;
@@ -3412,14 +3405,14 @@ VAStatus DdiMedia_CreateConfig (
                                     }
                                 }
                             }
-    #endif
+#endif
                             else if ((attrib_list[j].type == VAConfigAttribMaxPictureWidth) || (attrib_list[j].type == VAConfigAttribMaxPictureHeight) || (attrib_list[j].type == VAConfigAttribEncROI) || (attrib_list[j].type == VAConfigAttribEncDirtyRect)) {
                                 if (attrib_list[j].value <= s_vpuApiAttrs[i].value) {
                                     is_valid_attr = true;
                                     continue;
                                 }
                             }
-    #if 0 // will be added when wave encoder is applied
+#if 0 // will be added when wave encoder is applied
                             else if (attrib_list[j].type == VAConfigAttribEncMaxRefFrames) {
                                 if (((attrib_list[j].value & 0xffff) <= (s_vpuApiAttrs[i].value & 0xffff)) && (attrib_list[j].value <= s_vpuApiAttrs[i].value)) { //high16 bit  can compare with this way
                                     is_valid_attr = true;
@@ -3438,16 +3431,16 @@ VAStatus DdiMedia_CreateConfig (
                                     continue;
                                 }
                             }
-    #endif
+#endif
                         }
-    #if 0 // it is for INTEL
+#if 0 // it is for INTEL
                         else {
                             if((profile == VAProfileNone) && (attrib_list[j].type == VAConfigAttribStats)) {
                                 is_valid_attr = true;
                                 continue;
                             }
                         }
-    #endif
+#endif
                     }
 
                     if (num_attribs == 0) {
@@ -3484,6 +3477,8 @@ VAStatus DdiMedia_CreateConfig (
     // printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, status=0x%x, config_id=0x%x\n", __FUNCTION__, profile, entrypoint, status, *config_id);
     return status;
 #else
+    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
+
     return mediaCtx->m_caps->CreateConfig(
             profile, entrypoint, attrib_list, num_attribs, config_id);
 #endif
@@ -3502,11 +3497,7 @@ VAStatus DdiMedia_DestroyConfig (
     DDI_CHK_NULL(mediaCtx, "nullptr mediaCtx", VA_STATUS_ERROR_INVALID_CONTEXT);
 #ifdef CNM_VPUAPI_INTERFACE
     DDI_CHK_CONDITION((s_sizeOfVpuapiCapMap == 0), "VpuApiCapInit is not allced", VA_STATUS_ERROR_INVALID_CONFIG);
-#else
-    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
-#endif
 
-#ifdef CNM_VPUAPI_INTERFACE
     {
         int i;
         bool found_valid_config_id = false;
@@ -3526,6 +3517,8 @@ VAStatus DdiMedia_DestroyConfig (
         return status;
     }
 #else
+    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
+
     return mediaCtx->m_caps->DestroyConfig(config_id);
 #endif
 }
@@ -3547,11 +3540,7 @@ VAStatus DdiMedia_GetConfigAttributes(
     DDI_CHK_NULL(mediaCtx, "nullptr mediaCtx", VA_STATUS_ERROR_INVALID_CONTEXT);
 #ifdef CNM_VPUAPI_INTERFACE
     DDI_CHK_CONDITION((s_sizeOfVpuapiCapMap == 0), "VpuApiCapInit is not allced", VA_STATUS_ERROR_INVALID_CONFIG);
-#else
-    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
-#endif
 
-#ifdef CNM_VPUAPI_INTERFACE
     VAStatus status;
 
     {
@@ -3601,6 +3590,8 @@ VAStatus DdiMedia_GetConfigAttributes(
     printf("-%s status=0x%x\n", __FUNCTION__, status);
     return status;
 #else
+    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
+
     return mediaCtx->m_caps->GetConfigAttributes(
             profile, entrypoint, attrib_list, num_attribs);
 #endif
@@ -4392,21 +4383,19 @@ VAStatus DdiMedia_DestroyContext (
 
     switch (ctxType)
     {
-        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
 #ifdef CNM_VPUAPI_INTERFACE
+        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
             VpuApiDecClose(ctx, context);
             VpuApiDeInit();
             return VA_STATUS_SUCCESS;
-#else
-            return DdiDecode_DestroyContext(ctx, context);
-#endif
-#ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
         case DDI_MEDIA_CONTEXT_TYPE_VP:
         case DDI_MEDIA_CONTEXT_TYPE_MFE:
             DDI_ASSERTMESSAGE("DDI: unsupported context in DdiCodec_DestroyContext.");
             return VA_STATUS_ERROR_INVALID_CONTEXT;
 #else
+        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
+            return DdiDecode_DestroyContext(ctx, context);
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             return DdiEncode_DestroyContext(ctx, context);
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -4451,20 +4440,19 @@ VAStatus DdiMedia_CreateBuffer (
     VAStatus va = VA_STATUS_SUCCESS;
     switch (ctxType)
     {
+#ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
-#ifdef CNM_VPUAPI_INTERFACE
             va = VpuApiDecCreateBuffer(ctx, ctxPtr, type, size, num_elements, data, bufId);
-#else
-            va = DdiDecode_CreateBuffer(ctx, DdiDecode_GetDecContextFromPVOID(ctxPtr), type, size, num_elements, data, bufId);
-#endif
             break;
-#ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
         case DDI_MEDIA_CONTEXT_TYPE_VP:
         case DDI_MEDIA_CONTEXT_TYPE_PROTECTED:
             va = VA_STATUS_ERROR_INVALID_CONTEXT;
             break;
 #else
+        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
+            va = DdiDecode_CreateBuffer(ctx, DdiDecode_GetDecContextFromPVOID(ctxPtr), type, size, num_elements, data, bufId);
+            break;
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             va = DdiEncode_CreateBuffer(ctx, context, type, size, num_elements, data, bufId);
             break;
@@ -4568,29 +4556,26 @@ VAStatus DdiMedia_MapBufferInternal (
     uint32_t                 ctxType = DdiMedia_GetCtxTypeFromVABufferID(mediaCtx, buf_id);
     void                     *ctxPtr = nullptr;
 #ifdef CNM_VPUAPI_INTERFACE
-#else
-    DDI_CODEC_COM_BUFFER_MGR *bufMgr = nullptr;
-    PDDI_ENCODE_CONTEXT      encCtx  = nullptr;
-    PDDI_DECODE_CONTEXT      decCtx  = nullptr;
-#endif
-#ifdef CNM_VPUAPI_INTERFACE
     switch (ctxType)
     {
         case DDI_MEDIA_CONTEXT_TYPE_VP:
         case DDI_MEDIA_CONTEXT_TYPE_PROTECTED:
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             return VA_STATUS_ERROR_INVALID_BUFFER;
-        case DDI_MEDIA_CONTEXT_TYPE_MEDIA:
-            break;
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
             ctxPtr = DdiMedia_GetCtxFromVABufferID(mediaCtx, buf_id);
             DDI_CHK_NULL(ctxPtr, "nullptr ctxPtr", VA_STATUS_ERROR_INVALID_CONTEXT);
-
+            break;
+        case DDI_MEDIA_CONTEXT_TYPE_MEDIA:
             break;
         default:
             return VA_STATUS_ERROR_INVALID_BUFFER;
     }
 #else
+    DDI_CODEC_COM_BUFFER_MGR *bufMgr = nullptr;
+    PDDI_ENCODE_CONTEXT      encCtx  = nullptr;
+    PDDI_DECODE_CONTEXT      decCtx  = nullptr;
+
     switch (ctxType)
     {
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -4876,12 +4861,6 @@ VAStatus DdiMedia_UnmapBuffer (
     void     *ctxPtr = nullptr;
     uint32_t ctxType = DdiMedia_GetCtxTypeFromVABufferID(mediaCtx, buf_id);
 #ifdef CNM_VPUAPI_INTERFACE
-#else
-    DDI_CODEC_COM_BUFFER_MGR *bufMgr = nullptr;
-    PDDI_DECODE_CONTEXT decCtx = nullptr;
-    PDDI_ENCODE_CONTEXT encCtx = nullptr;
-#endif
-#ifdef CNM_VPUAPI_INTERFACE
     switch (ctxType)
     {
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -4898,6 +4877,10 @@ VAStatus DdiMedia_UnmapBuffer (
             return VA_STATUS_ERROR_INVALID_BUFFER;
     }
 #else
+    DDI_CODEC_COM_BUFFER_MGR *bufMgr = nullptr;
+    PDDI_DECODE_CONTEXT decCtx = nullptr;
+    PDDI_ENCODE_CONTEXT encCtx = nullptr;
+
     switch (ctxType)
     {
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -4995,9 +4978,6 @@ VAStatus DdiMedia_DestroyBuffer (
     void     *ctxPtr = DdiMedia_GetCtxFromVABufferID(mediaCtx,     buffer_id);
     uint32_t ctxType = DdiMedia_GetCtxTypeFromVABufferID(mediaCtx, buffer_id);
 
-    DDI_CODEC_COM_BUFFER_MGR     *bufMgr  = nullptr;
-    PDDI_ENCODE_CONTEXT           encCtx  = nullptr;
-    PDDI_DECODE_CONTEXT           decCtx  = nullptr;
 #ifdef CNM_VPUAPI_INTERFACE
     switch (ctxType)
     {
@@ -5015,6 +4995,10 @@ VAStatus DdiMedia_DestroyBuffer (
             return VA_STATUS_ERROR_INVALID_BUFFER;
     }
 #else
+    DDI_CODEC_COM_BUFFER_MGR     *bufMgr  = nullptr;
+    PDDI_ENCODE_CONTEXT           encCtx  = nullptr;
+    PDDI_DECODE_CONTEXT           decCtx  = nullptr;
+
     switch (ctxType)
     {
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
@@ -5037,10 +5021,11 @@ VAStatus DdiMedia_DestroyBuffer (
             return VA_STATUS_ERROR_INVALID_BUFFER;
     }
 #endif
-#ifdef CNM_VPUAPI_INTERFACE
-#else
+
     switch ((int32_t)buf->uiType)
     {
+#ifdef CNM_VPUAPI_INTERFACE
+#else
         case VASliceDataBufferType:
         case VAProtectedSliceDataBufferType:
             DdiMedia_ReleaseBsBuffer(bufMgr, buf);
@@ -5056,22 +5041,6 @@ VAStatus DdiMedia_DestroyBuffer (
             DdiMedia_ReleaseSliceControlBuffer(ctxType, ctxPtr, buf);
             break;
         case VAPictureParameterBufferType:
-            break;
-        case VAImageBufferType:
-            if(buf->format == Media_Format_CPU)
-            {
-                MOS_FreeMemory(buf->pData);
-            }
-            else
-            {
-                DdiMediaUtil_UnRefBufObjInMediaBuffer(buf);
-
-                if (buf->uiExportcount) {
-                    buf->bPostponedBufFree = true;
-                    MOS_TraceEventExt(EVENT_VA_FREE_BUFFER, EVENT_TYPE_END, nullptr, 0, nullptr, 0);
-                    return VA_STATUS_SUCCESS;
-                }
-            }
             break;
         case VAProcPipelineParameterBufferType:
         case VAProcFilterParameterBufferType:
@@ -5171,12 +5140,29 @@ VAStatus DdiMedia_DestroyBuffer (
             }
             DdiMediaUtil_FreeBuffer(buf);
             break;
+#endif
+        case VAImageBufferType:
+            if(buf->format == Media_Format_CPU)
+            {
+                MOS_FreeMemory(buf->pData);
+            }
+            else
+            {
+                DdiMediaUtil_UnRefBufObjInMediaBuffer(buf);
+
+                if (buf->uiExportcount) {
+                    buf->bPostponedBufFree = true;
+                    MOS_TraceEventExt(EVENT_VA_FREE_BUFFER, EVENT_TYPE_END, nullptr, 0, nullptr, 0);
+                    return VA_STATUS_SUCCESS;
+                }
+            }
+            break;
         default: // do not handle any un-listed buffer type
             MOS_FreeMemory(buf->pData);
             break;
             //return va_STATUS_SUCCESS;
     }
-#endif
+
     MOS_FreeMemory(buf);
 
     DdiMedia_DestroyBufFromVABufferID(mediaCtx, buffer_id);
@@ -5219,19 +5205,17 @@ VAStatus DdiMedia_BeginPicture (
 
     switch (ctxType)
     {
-        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
 #ifdef CNM_VPUAPI_INTERFACE
+        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
             mediaCtx->renderTarget = render_target;
             return VA_STATUS_SUCCESS;
-#else
-            return DdiDecode_BeginPicture(ctx, context, render_target);
-#endif
-#ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
         case DDI_MEDIA_CONTEXT_TYPE_VP:
             DDI_ASSERTMESSAGE("DDI: unsupported context in DdiCodec_BeginPicture.");
             return VA_STATUS_ERROR_INVALID_CONTEXT;
 #else
+        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
+            return DdiDecode_BeginPicture(ctx, context, render_target);
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             return DdiEncode_BeginPicture(ctx, context, render_target);
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -5273,18 +5257,16 @@ VAStatus DdiMedia_RenderPicture (
 
     switch (ctxType)
     {
+#ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
-#ifdef CNM_VPUAPI_INTERFACE
             return VA_STATUS_SUCCESS;
-#else
-            return DdiDecode_RenderPicture(ctx, context, buffers, num_buffers);
-#endif
-#ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
         case DDI_MEDIA_CONTEXT_TYPE_VP:
             DDI_ASSERTMESSAGE("DDI: unsupported context in DdiCodec_RenderPicture.");
             return VA_STATUS_ERROR_INVALID_CONTEXT;
 #else
+        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
+            return DdiDecode_RenderPicture(ctx, context, buffers, num_buffers);
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             return DdiEncode_RenderPicture(ctx, context, buffers, num_buffers);
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -5311,21 +5293,20 @@ VAStatus DdiMedia_EndPicture (
     VAStatus  vaStatus = VA_STATUS_SUCCESS;
     switch (ctxType)
     {
-        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
 #ifdef CNM_VPUAPI_INTERFACE
+        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
             vaStatus = VpuApiDecSeqInit(ctx);
             vaStatus = VpuApiDecPic(ctx);
-#else
-            vaStatus = DdiDecode_EndPicture(ctx, context);
-#endif
             break;
-#ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
         case DDI_MEDIA_CONTEXT_TYPE_VP:
             DDI_ASSERTMESSAGE("DDI: unsupported context in DdiCodec_EndPicture.");
             vaStatus = VA_STATUS_ERROR_INVALID_CONTEXT;
-        break;
+            break;
 #else
+        case DDI_MEDIA_CONTEXT_TYPE_DECODER:
+            vaStatus = DdiDecode_EndPicture(ctx, context);
+            break;
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             vaStatus = DdiEncode_EndPicture(ctx, context);
             break;
@@ -7399,13 +7380,11 @@ DdiMedia_QueryProcessingRate(
     DDI_CHK_NULL(mediaCtx, "nullptr mediaCtx", VA_STATUS_ERROR_INVALID_CONTEXT);
 #ifdef CNM_VPUAPI_INTERFACE
     DDI_CHK_CONDITION((s_sizeOfVpuapiCapMap == 0), "VpuApiCapInit is not allced", VA_STATUS_ERROR_INVALID_CONFIG);
-#else
-    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
-#endif
 
-#ifdef CNM_VPUAPI_INTERFACE
     return VA_STATUS_ERROR_UNIMPLEMENTED;
 #else
+    DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
+
     return mediaCtx->m_caps->QueryProcessingRate(config_id,
             proc_buf, processing_rate);
 #endif
