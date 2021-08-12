@@ -90,7 +90,7 @@ static int32_t atrace_switch            = 0;
 #ifdef CNM_VPUAPI_INTERFACE
 #define VPUAPI_MAX_FB_NUM     100
 #define VPUAPI_MAX_PIC_WIDTH  8192
-#define VPUAPI_MAX_PIC_HEIGHT 4096
+#define VPUAPI_MAX_PIC_HEIGHT 8192
 #endif
 
 #define DDI_UNUSED(param)                      MOS_UNUSED(param)
@@ -576,8 +576,12 @@ struct DDI_MEDIA_CONTEXT
 #ifdef CNM_FPGA_PLATFORM
     vpu_buffer_t      linearFrameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBuffer       linearFrameBuf[VPUAPI_MAX_FB_NUM];
+#ifdef CNM_VPUAPI_INTERFACE_DEBUG
+    FILE *fpYuvDebug;
+#endif
 #endif
     bool              seqInited;
+    int32_t           decIdx;
 #endif
 };
 
