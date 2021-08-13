@@ -579,6 +579,8 @@ struct DDI_MEDIA_CONTEXT
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
     FILE *fpYuvDebug;
 #endif
+    int32_t           surfaceWidth;
+    int32_t           surfaceHeight;
 #endif
     bool              seqInited;
     int32_t           decIdx;

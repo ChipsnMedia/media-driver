@@ -1339,7 +1339,10 @@ static VAStatus VpuApiDecOpen(
          printf("[CNM_VPUAPI] not supported profile=0x%x\n", profile);
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
-
+#ifdef CNM_FPGA_PLATFORM
+    mediaCtx->surfaceWidth = pictureWidth;
+    mediaCtx->surfaceHeight = pictureHeight;
+#endif
     mediaCtx->decOP.bitstreamFormat = bitFormat;
     mediaCtx->decOP.coreIdx         = 0;
     mediaCtx->decOP.bitstreamMode   = BS_MODE_PIC_END;
@@ -1602,8 +1605,13 @@ static VAStatus VpuApiDecPic(
         void *buffer = NULL;
         uint8_t* surfaceOffset;
         uint8_t* dataY;
+        uint8_t* ptrDataY;
         uint8_t* dataCb;
+        uint8_t* ptrDataCb;
         uint8_t* dataCr;
+        uint8_t* ptrDataCr;
+        uint8_t* tmp;
+        int i;
 
         lumaSize = mediaCtx->linearStride * mediaCtx->linearHeight;
         if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
@@ -1617,7 +1625,7 @@ static VAStatus VpuApiDecPic(
             chromaSize = chromaSize * 2;
         }
   
-        printf("[CNM_VPUAPI] Dump Linear Frame WxH : %dx%d, wtl_format=%d\n", mediaCtx->linearStride, mediaCtx->linearHeight, mediaCtx->wtlFormat);
+        printf("[CNM_VPUAPI] Dump Linear Frame WxH : %dx%d, Surface WxH : %dx%d, wtl_format=%d\n", mediaCtx->linearStride, mediaCtx->linearHeight, mediaCtx->surfaceWidth, mediaCtx->surfaceHeight, mediaCtx->wtlFormat);
         printf("[CNM_VPUAPI] Dump lumaSize : %d\n", lumaSize);
         printf("[CNM_VPUAPI] Dump chromaSize : %d\n", chromaSize);
         printf("[CNM_VPUAPI] Dump BufAddrY: 0x%x\n", outputInfo.vaDecodeBufAddrY);
@@ -1626,7 +1634,9 @@ static VAStatus VpuApiDecPic(
         dataY  = (uint8_t*)osal_malloc(lumaSize);
         dataCb = (uint8_t*)osal_malloc(chromaSize);
         dataCr = (uint8_t*)osal_malloc(chromaSize);
-
+        ptrDataY = dataY;
+        ptrDataCb = dataCb;
+        ptrDataCr = dataCr;
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
         if (mediaCtx->fpYuvDebug) {
             printf("[CNM_VPUAPI]+Dump YuvDebug: fp=%p, lumaSize=%d, chromSize=%d\n", mediaCtx->fpYuvDebug, lumaSize, chromaSize);
@@ -1654,14 +1664,62 @@ static VAStatus VpuApiDecPic(
         printf("[CNM_VPUAPI] Surface Info: fourcc=0x%x, lumaStride=%d, chromaUStride=%d, lumaOffset=%d, chromalUoffset=%d, chromaVOffset=%d\n", fourcc, lumaStride, chromaUStride, lumaOffset, chromaUOffset, chromaVOffset);
 
         surfaceOffset = (unsigned char*)buffer + lumaOffset;
-        memcpy(surfaceOffset, dataY, lumaSize);
+        // memcpy(surfaceOffset, dataY, lumaSize);
+        tmp = surfaceOffset;
+        for (i=0; i<mediaCtx->surfaceHeight; i++) {
+            if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
+                memcpy(tmp, ptrDataY, mediaCtx->surfaceWidth*2);
+            }
+            else {
+                memcpy(tmp, ptrDataY, mediaCtx->surfaceWidth);
+            }
+            tmp += lumaStride;
+            ptrDataY += mediaCtx->linearStride;
+        }
 
         surfaceOffset = (unsigned char*)buffer + chromaUOffset;
-        memcpy(surfaceOffset, dataCb, chromaSize);
-
-        if (cbcrInterleave == FALSE) {
+        // memcpy(surfaceOffset, dataCb, chromaSize);
+        // if (cbcrInterleave == FALSE) {
+        //     surfaceOffset = (unsigned char*)buffer + chromaVOffset;
+        //     memcpy(surfaceOffset, dataCr, chromaSize);
+        // }
+        if (cbcrInterleave == TRUE) {
+            tmp = surfaceOffset;
+            for (i=0; i<mediaCtx->surfaceHeight/2; i++) {
+                if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
+                    memcpy(tmp, ptrDataCb, mediaCtx->surfaceWidth*2);
+                }
+                else {
+                    memcpy(tmp, ptrDataCb, mediaCtx->surfaceWidth);
+                }
+                tmp += chromaUStride;
+                ptrDataCb += mediaCtx->linearStride;
+            }
+        }
+        else {
+            tmp = surfaceOffset;
+            for (i=0; i<mediaCtx->surfaceHeight/4; i++) {
+                if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
+                    memcpy(tmp, ptrDataCb, mediaCtx->surfaceWidth*2);
+                }
+                else {
+                    memcpy(tmp, ptrDataCb, mediaCtx->surfaceWidth);
+                }
+                tmp += chromaUStride;
+                ptrDataCb += mediaCtx->linearStride;
+            }
             surfaceOffset = (unsigned char*)buffer + chromaVOffset;
-            memcpy(surfaceOffset, dataCr, chromaSize);
+            tmp = surfaceOffset;
+            for (i=0; i<mediaCtx->surfaceHeight/4; i++) {
+                if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
+                    memcpy(tmp, ptrDataCr, mediaCtx->surfaceWidth*2);
+                }
+                else {
+                    memcpy(tmp, ptrDataCr, mediaCtx->surfaceWidth);
+                }
+                tmp += chromaVStride;
+                ptrDataCb += mediaCtx->linearStride;
+            }
         }
 
         DdiMedia_UnlockSurface(ctx, mediaCtx->renderTarget);
