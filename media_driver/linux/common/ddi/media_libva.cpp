@@ -953,13 +953,7 @@ static void AllocateLinearFrameBuffer(
     uint32_t fbSize = 0;
 
     fbLumaSize   = fbWidth * fbHeight;
-    if ((mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB) || (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB)) {
-        fbLumaSize = fbLumaSize * 2;
-    }
     fbChromaSize = (fbWidth/2) * (fbHeight/2);
-    if ((mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB) || (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB)) {
-        fbChromaSize = fbChromaSize * 2;
-    }
     fbSize = fbLumaSize + (fbChromaSize*2);
     if (vdi_init(0) < 0)
         printf("[CNM_VPUAPI] FAIL vdi_init\n");
@@ -1008,6 +1002,7 @@ static VAStatus AllocateFrameBuffer(
     int32_t fbStride = 0;
     int32_t fbSize = 0;
     int32_t fbCount = 0;
+    RetCode retCode;
 
     osal_memset(&fbAllocInfo, 0x00, sizeof(FrameBufferAllocInfo));
     osal_memset(frameBuf,     0x00, sizeof(FrameBuffer)*VPUAPI_MAX_FB_NUM);
@@ -1048,8 +1043,8 @@ static VAStatus AllocateFrameBuffer(
         frameBuf[index].updateFbInfo = TRUE;
     }
 
-    if (VPU_DecAllocateFrameBuffer(hdl, fbAllocInfo, frameBuf) != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] Failed to allocate frame buffer\n");
+    if ((retCode = VPU_DecAllocateFrameBuffer(hdl, fbAllocInfo, frameBuf)) != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to allocate frame buffer retCode=0x%x\n", retCode);
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
 
@@ -1067,9 +1062,9 @@ static VAStatus AllocateFrameBuffer(
         frameBuf[index].lumaBitDepth   = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
         frameBuf[index].chromaBitDepth = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
     }
-
-    if (VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, seqInfo.picHeight, COMPRESSED_FRAME_MAP) != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] Failed to register frame buffer\n");
+    
+    if ((retCode = VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, seqInfo.picHeight, COMPRESSED_FRAME_MAP)) != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to register frame buffer retCode=0x%x\n", retCode);
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
     printf("[CNM_VPUAPI] Success VPU_DecRegisterFrameBuffer fbc : fbCount=%d fbStride=%d, linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", fbCount, fbStride, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
@@ -1154,7 +1149,11 @@ static VAStatus VpuApiInit(void)
 
 #ifdef CNM_FPGA_PLATFORM
     vdi_init(0);
-    vdi_set_timing_opt(0);
+    vdi_hw_reset(0);
+    osal_msleep(1000); // Waiting for stable state
+    if (vdi_set_timing_opt(0) == HPI_SET_TIMING_MAX) {
+        printf("[CNM_VPUAPI] Failed to optimize HPI timing\n");
+    }
     vdi_hw_reset(0);
     osal_msleep(1000); // Waiting for stable state
     vdi_release(0);
@@ -1340,8 +1339,8 @@ static VAStatus VpuApiDecOpen(
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 #ifdef CNM_FPGA_PLATFORM
-    mediaCtx->surfaceWidth = pictureWidth;
-    mediaCtx->surfaceHeight = pictureHeight;
+    mediaCtx->surfaceWidth = (((pictureWidth)+0x01)&~0x01);
+    mediaCtx->surfaceHeight = (((pictureHeight)+0x01)&~0x01);
 #endif
     mediaCtx->decOP.bitstreamFormat = bitFormat;
     mediaCtx->decOP.coreIdx         = 0;
@@ -1486,21 +1485,22 @@ static VAStatus VpuApiDecSeqInit(
     if ((ret=VPU_DecCompleteSeqInit(hdl, &seqInfo)) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] FAIL VPU_DecCompleteSeqInit: 0x%x\n", seqInfo.seqInitErrReason);
         mediaCtx->seqInited = seqInited;
-        return VA_STATUS_ERROR_UNIMPLEMENTED;
+        return VA_STATUS_ERROR_DECODING_ERROR;
     }
     if (seqInited == FALSE) {
         mediaCtx->seqInited = seqInited;
-        return VA_STATUS_ERROR_UNIMPLEMENTED;
+        return VA_STATUS_ERROR_DECODING_ERROR;
     }
 
     mediaCtx->seqInited = seqInited;
     mediaCtx->minFrameBufferCount = seqInfo.minFrameBufferCount;
 
     printf("[CNM_VPUAPI] SUCCESS VpuApiDecSeqInit\n");
-    printf("[CNM_VPUAPI] width : %d | height : %d\n", seqInfo.picWidth, seqInfo.picHeight);
-    printf("[CNM_VPUAPI] lumaBitdepth : %d | chromaBitdepth : %d\n", seqInfo.lumaBitdepth, seqInfo.chromaBitdepth);
-    printf("[CNM_VPUAPI] minFrameBufferCount : %d\n", seqInfo.minFrameBufferCount);
-    printf("[CNM_VPUAPI] numOfRenderTargets : %d\n", mediaCtx->numOfRenderTargets);
+    printf("[CNM_VPUAPI] >>> width : %d | height : %d\n", seqInfo.picWidth, seqInfo.picHeight);
+    printf("[CNM_VPUAPI] >>> crop left : %d | top : %d | right : %d | bottom : %d\n", seqInfo.picCropRect.left, seqInfo.picCropRect.top, seqInfo.picCropRect.right, seqInfo.picCropRect.bottom);
+    printf("[CNM_VPUAPI] >>> lumaBitdepth : %d | chromaBitdepth : %d\n", seqInfo.lumaBitdepth, seqInfo.chromaBitdepth);
+    printf("[CNM_VPUAPI] >>> minFrameBufferCount : %d\n", seqInfo.minFrameBufferCount);
+    printf("[CNM_VPUAPI] >>> numOfRenderTargets : %d\n", mediaCtx->numOfRenderTargets);
 
     if (AllocateFrameBuffer(mediaCtx, seqInfo) != VA_STATUS_SUCCESS)
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -1555,7 +1555,6 @@ static VAStatus VpuApiDecPic(
     if (intrFlag == -1) {
         printf("[CNM_VPUAPI] FAIL VPU_WaitInterruptEx for VPU_DecStartOneFrame : timeout=%dms\n", VPU_DEC_TIMEOUT);
         VPU_DecGetOutputInfo(hdl, &outputInfo);
-        printf("[CNM_VPUAPI] 1111 FAIL VPU_WaitInterruptEx for VPU_DecStartOneFrame : timeout=%dms\n", VPU_DEC_TIMEOUT);
         return VA_STATUS_ERROR_TIMEDOUT;
     }
     printf("[CNM_VPUAPI] intrFlag: 0x%x\n", intrFlag);
@@ -1662,7 +1661,6 @@ static VAStatus VpuApiDecPic(
                              &lumaOffset, &chromaUOffset, &chromaVOffset,
                              &bufferName, &buffer);
         printf("[CNM_VPUAPI] Surface Info: fourcc=0x%x, lumaStride=%d, chromaUStride=%d, lumaOffset=%d, chromalUoffset=%d, chromaVOffset=%d\n", fourcc, lumaStride, chromaUStride, lumaOffset, chromaUOffset, chromaVOffset);
-
         surfaceOffset = (unsigned char*)buffer + lumaOffset;
         // memcpy(surfaceOffset, dataY, lumaSize);
         tmp = surfaceOffset;
