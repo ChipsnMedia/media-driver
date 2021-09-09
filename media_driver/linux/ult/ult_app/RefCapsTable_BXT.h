@@ -24,18 +24,18 @@
 
 #include "driver_loader.h"
 
-#ifdef CNM_VPUAPI_INTERFACE
+#ifdef CNM_VPUAPI_INTERFACE_CAP
 std::vector<FeatureID> refFeatureIDTable_BXT = {
     { VAProfileH264Main               , VAEntrypointVLD                 },
-    // { VAProfileH264Main               , VAEntrypointEncSlice            },
+    { VAProfileH264Main               , VAEntrypointEncSlice            },
     // { VAProfileH264Main               , VAEntrypointFEI                 },
     // { VAProfileH264Main               , VAEntrypointEncSliceLP          },
     { VAProfileH264High               , VAEntrypointVLD                 },
-    // { VAProfileH264High               , VAEntrypointEncSlice            },
+    { VAProfileH264High               , VAEntrypointEncSlice            },
     // { VAProfileH264High               , VAEntrypointFEI                 },
     // { VAProfileH264High               , VAEntrypointEncSliceLP          },
     { VAProfileH264ConstrainedBaseline, VAEntrypointVLD                 },
-    // { VAProfileH264ConstrainedBaseline, VAEntrypointEncSlice            },
+    { VAProfileH264ConstrainedBaseline, VAEntrypointEncSlice            },
     // { VAProfileH264ConstrainedBaseline, VAEntrypointFEI                 },
     // { VAProfileH264ConstrainedBaseline, VAEntrypointEncSliceLP          },
     // { VAProfileMPEG2Simple            , VAEntrypointVLD                 },
@@ -47,8 +47,9 @@ std::vector<FeatureID> refFeatureIDTable_BXT = {
     // { VAProfileJPEGBaseline           , VAEntrypointEncPicture          },
     // { VAProfileVP8Version0_3          , VAEntrypointVLD                 },
     { VAProfileHEVCMain               , VAEntrypointVLD                 },
-    // { VAProfileHEVCMain               , VAEntrypointEncSlice            },
+    { VAProfileHEVCMain               , VAEntrypointEncSlice            },
     { VAProfileHEVCMain10             , VAEntrypointVLD                 },
+    { VAProfileHEVCMain10             , VAEntrypointEncSlice                 },
     // { VAProfileHEVCMain               , VAEntrypointFEI                 },
     { VAProfileVP9Profile0            , VAEntrypointVLD                 },
     // { VAProfileNone                   , VAEntrypointVideoProc           },

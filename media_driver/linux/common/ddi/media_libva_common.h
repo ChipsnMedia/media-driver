@@ -89,8 +89,12 @@ static int32_t atrace_switch            = 0;
 
 #ifdef CNM_VPUAPI_INTERFACE
 #define VPUAPI_MAX_FB_NUM     100
+#endif
+#ifdef CNM_VPUAPI_INTERFACE_CAP
 #define VPUAPI_MAX_PIC_WIDTH  8192
 #define VPUAPI_MAX_PIC_HEIGHT 8192
+#define VPUAPI_MIN_ENC_PIC_WIDTH  128
+#define VPUAPI_MIN_ENC_PIC_HEIGHT  128
 #endif
 
 #define DDI_UNUSED(param)                      MOS_UNUSED(param)

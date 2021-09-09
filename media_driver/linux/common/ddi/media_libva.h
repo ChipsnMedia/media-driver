@@ -53,10 +53,10 @@
 #include "codechal_encoder_base.h"
 #include "media_libva_common.h"
 
-#ifdef CNM_VPUAPI_INTERFACE
-#define VPUAPI_MAX_ATTRIBUTE ((int32_t)VAConfigAttribTypeMax)
+#ifdef CNM_VPUAPI_INTERFACE_CAP
 #define VPUAPI_MAX_PROFILE 31
 #define VPUAPI_MAX_ENTRYPOINT 7 
+#define VPUAPI_MAX_ATTRIBUTE (((int32_t)VAConfigAttribTypeMax)*VPUAPI_MAX_PROFILE)
 #define VPUAPI_MAX_IMAGE_FORMATS 4 // VA_FOURCC_I420, VA_FOURCC_NV12, VA_FOURCC_NV21, VA_FOURCC_P010
 #define VPUAPI_MAX_SUBPIC_FORMATS           4    // no sub-pic blending support, still set to 4 for further implementation
 #endif
