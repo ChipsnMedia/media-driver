@@ -562,8 +562,26 @@ struct DDI_MEDIA_CONTEXT
     bool m_apoMosEnabled;
 #ifdef CNM_VPUAPI_INTERFACE
     DecHandle         decHandle;
+    EncHandle         encHandle;
     DecOpenParam      decOP;
+    EncOpenParam      encOP;
+    VACodedBufferSegment *pCodedBufferSegment;
+    VABufferID        encodedBufferId;
     VAProfile         vaProfile;
+    uint32_t          seqParamNum;
+    uint32_t          picParamNum;
+    uint32_t          sliceParamNum;
+    uint32_t          packedSeqParamNum;
+    uint32_t          packedPicParamNum;
+    uint32_t          packedSliceParamNum;
+    uint32_t          packedSeiParamNum;
+    uint32_t          packedParamSize;
+    uint32_t          packedDataSize;
+    vpu_buffer_t      seqParamBuf;
+    vpu_buffer_t      picParamBuf;
+    vpu_buffer_t      sliceParamBuf;
+    vpu_buffer_t      packedParamBuf;
+    vpu_buffer_t      packedDataBuf;
     vpu_buffer_t      paramBuf;
     Uint32            paramSize;
     vpu_buffer_t      bsBuf;
@@ -571,23 +589,31 @@ struct DDI_MEDIA_CONTEXT
     uint32_t          numOfSlice;
     uint32_t          linearStride;
     uint32_t          linearHeight;
+    bool              cbcrInterleave;
+    bool              nv21;
     VASurfaceID       renderTarget;
+    VASurfaceID       reconTarget;
     int32_t           numOfRenderTargets;
     uint32_t          minFrameBufferCount;
     VASurfaceID       renderTargets[VPUAPI_MAX_FB_NUM];
     vpu_buffer_t      frameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBufferFormat wtlFormat;
+    vpu_buffer_t      fbcYOffsetBufMem[VPUAPI_MAX_FB_NUM];
+    vpu_buffer_t      fbcCOffsetBufMem[VPUAPI_MAX_FB_NUM];
+    vpu_buffer_t      mvColBufMem[VPUAPI_MAX_FB_NUM];
+    vpu_buffer_t      subSampledBufMem[VPUAPI_MAX_FB_NUM];
 #ifdef CNM_FPGA_PLATFORM
     vpu_buffer_t      linearFrameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBuffer       linearFrameBuf[VPUAPI_MAX_FB_NUM];
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
-    FILE *fpYuvDebug;
+    FILE*             fpYuvDebug;
 #endif
     int32_t           surfaceWidth;
     int32_t           surfaceHeight;
 #endif
     bool              seqInited;
     int32_t           decIdx;
+    int32_t           encIdx;
 #endif
 };
 
