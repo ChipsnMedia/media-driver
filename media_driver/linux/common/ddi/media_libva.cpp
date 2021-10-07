@@ -376,14 +376,14 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
     // else if (entrypoint == VAEntrypointVLD)    /* vld */
     if (entrypoint == VAEntrypointVLD)    /* vld */
     {
-        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2)
+        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2 || profile == VAProfileAV1Profile0 || profile == VAProfileAV1Profile1)
         {
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
             attribs[i].value.value.i = VA_FOURCC_P010;
             i++;
-
+            
             // if(profile == VAProfileVP9Profile2)
             // {
             //     attribs[i].type = VASurfaceAttribPixelFormat;
@@ -961,7 +961,7 @@ static void AllocateLinearFrameBuffer(
     pVb = &mediaCtx->linearFrameBufMem[index];
     pVb->size = fbSize;
 
-    printf("[CNM_VPUAPI] %s Allocate Linear buffer i=%d, wtlFormat=%d, stride=%d, height=%d, fbSize=%d\n", __FUNCTION__, index, mediaCtx->wtlFormat, mediaCtx->linearStride, mediaCtx->linearHeight, fbSize);
+    // printf("[CNM_VPUAPI] %s Allocate Linear buffer i=%d, wtlFormat=%d, stride=%d, height=%d, fbSize=%d\n", __FUNCTION__, index, mediaCtx->wtlFormat, mediaCtx->linearStride, mediaCtx->linearHeight, fbSize);
     if (vdi_allocate_dma_memory(0, pVb, DEC_FB_LINEAR, 0) < 0)
         printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory linearBuf\n");
 
@@ -979,7 +979,7 @@ static void FreeLinearFrameBuffer(
 )
 {
 
-    printf("[CNM_VPUAPI] %s index=%d\n", __FUNCTION__, index);
+    // printf("[CNM_VPUAPI] %s index=%d\n", __FUNCTION__, index);
     if (mediaCtx->linearFrameBufMem[index].size > 0) {
         vdi_free_dma_memory(0, &mediaCtx->linearFrameBufMem[index], DEC_FB_LINEAR, 0);
     }
@@ -1063,11 +1063,11 @@ static VAStatus AllocateFrameBuffer(
         frameBuf[index].chromaBitDepth = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
     }
     
-    if ((retCode = VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, seqInfo.picHeight, COMPRESSED_FRAME_MAP)) != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] Failed to register frame buffer retCode=0x%x\n", retCode);
+    if ((retCode = VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, fbHeight, COMPRESSED_FRAME_MAP)) != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to VPU_DecRegisterFrameBuffer retCode=0x%x fbc : fbCount=%d fbStride=%d, fbHeight=%d, linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", retCode, fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
-    printf("[CNM_VPUAPI] Success VPU_DecRegisterFrameBuffer fbc : fbCount=%d fbStride=%d, linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", fbCount, fbStride, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
+    printf("[CNM_VPUAPI] Success VPU_DecRegisterFrameBuffer fbc : fbCount=%d fbStride=%d, fbHeight=%d linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
 
     return VA_STATUS_SUCCESS;
 }
@@ -1338,6 +1338,8 @@ static VAStatus VpuApiDecOpen(
          printf("[CNM_VPUAPI] not supported profile=0x%x\n", profile);
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
+    mediaCtx->pictureWidth = pictureWidth;
+    mediaCtx->pictureHeight = pictureHeight;
 #ifdef CNM_FPGA_PLATFORM
     mediaCtx->surfaceWidth = (((pictureWidth)+0x01)&~0x01);
     mediaCtx->surfaceHeight = (((pictureHeight)+0x01)&~0x01);
@@ -1461,6 +1463,8 @@ static VAStatus VpuApiDecSeqInit(
     VPU_DecSetRdPtr(hdl, mediaCtx->bsBuf.phys_addr, TRUE);
     VPU_DecUpdateBitstreamBuffer(hdl, mediaCtx->bsSize);
     VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_FIRST_PARAM_BUFFER, &mediaCtx->paramBuf.phys_addr);
+    VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_PIC_WIDTH, &mediaCtx->pictureWidth);
+    VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_PIC_HEIGHT, &mediaCtx->pictureHeight);
 
     if ((ret=VPU_DecIssueSeqInit(hdl)) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] FAIL VPU_DecIssueSeqInit: 0x%x\n", ret);
@@ -1571,9 +1575,8 @@ static VAStatus VpuApiDecPic(
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
-    if (outputInfo.indexFrameDecoded == DECODED_IDX_FLAG_NO_FB &&
-        outputInfo.indexFrameDisplay == DISPLAY_IDX_FLAG_NO_FB) {
-        printf("[CNM_VPUAPI] FAIL indexFrameDecoded %d indexFrameDisplay %d.\n", outputInfo.indexFrameDecoded, outputInfo.indexFrameDisplay);
+    if (outputInfo.indexFrameDecoded < 0) {
+        printf("[CNM_VPUAPI] DECODE FAIL indexFrameDecoded %d indexFrameDisplay %d.\n", outputInfo.indexFrameDecoded, outputInfo.indexFrameDisplay);
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
@@ -1613,16 +1616,10 @@ static VAStatus VpuApiDecPic(
         int i;
 
         lumaSize = mediaCtx->linearStride * mediaCtx->linearHeight;
-        if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
-            lumaSize = lumaSize * 2;
-        }
         if (cbcrInterleave == FALSE)
             chromaSize = (mediaCtx->linearStride/2) * (mediaCtx->linearHeight/2);
         else
             chromaSize = (mediaCtx->linearStride) * (mediaCtx->linearHeight/2);
-        if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
-            chromaSize = chromaSize * 2;
-        }
   
         printf("[CNM_VPUAPI] Dump Linear Frame WxH : %dx%d, Surface WxH : %dx%d, wtl_format=%d\n", mediaCtx->linearStride, mediaCtx->linearHeight, mediaCtx->surfaceWidth, mediaCtx->surfaceHeight, mediaCtx->wtlFormat);
         printf("[CNM_VPUAPI] Dump lumaSize : %d\n", lumaSize);

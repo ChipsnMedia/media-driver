@@ -573,6 +573,8 @@ struct DDI_MEDIA_CONTEXT
     VASurfaceID       renderTargets[VPUAPI_MAX_FB_NUM];
     vpu_buffer_t      frameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBufferFormat wtlFormat;
+    int32_t           pictureWidth;
+    int32_t           pictureHeight;
 #ifdef CNM_FPGA_PLATFORM
     vpu_buffer_t      linearFrameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBuffer       linearFrameBuf[VPUAPI_MAX_FB_NUM];
