@@ -204,7 +204,7 @@ static int vpuApiCapInitEncAttributes(VAProfile profile, VAEntrypoint entrypoint
 
     attrMap++;
     attrMap->attrType = VAConfigAttribRateControl;
-    attrMap->value = VA_RC_CQP|VA_RC_CBR|VA_RC_VBR ;
+    attrMap->value = VA_RC_CQP|VA_RC_CBR|VA_RC_VBR;
     attrMap->configId = config_id;
     attrMap->actual_profile = profile;
     attrMap->actual_entrypoint = entrypoint;
@@ -2144,6 +2144,8 @@ static VAStatus VpuApiEncOpen(
     VAProfile profile;
     VAEntrypoint entrypoint;
     bool findValidConfigId = false;
+    bool enRateControl = false;
+    uint32_t rcMode = 0;
     uint32_t i = 0;
     uint32_t bitDepth = 8;
 
@@ -2188,11 +2190,31 @@ static VAStatus VpuApiEncOpen(
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
+    switch (mediaCtx->rcMode) {
+    case VA_RC_CBR:
+        enRateControl = true;
+        rcMode        = 1;
+        break;
+    case VA_RC_VBR:
+        enRateControl = true;
+        rcMode        = 0;
+        break;
+    case VA_RC_CQP:
+        enRateControl = false;
+        rcMode        = 0;
+        break;
+    default:
+        printf("[CNM_VPUAPI] not supported rcMode=0x%x\n", mediaCtx->rcMode);
+        return VA_STATUS_ERROR_OPERATION_FAILED;
+    }
+
     mediaCtx->encOP.bitstreamFormat                         = bitFormat;
     mediaCtx->encOP.EncStdParam.wave6Param.internalBitDepth = bitDepth;
     mediaCtx->encOP.EncStdParam.wave6Param.gopPreset        = PRESET_IDX_IPP;
     mediaCtx->encOP.EncStdParam.wave6Param.frameRate        = 30;
     mediaCtx->encOP.EncStdParam.wave6Param.vbvBufferSize    = 3000;
+    mediaCtx->encOP.EncStdParam.wave6Param.enRateControl    = enRateControl;
+    mediaCtx->encOP.EncStdParam.wave6Param.rcMode           = rcMode;
     mediaCtx->encOP.coreIdx                                 = 0;
     mediaCtx->encOP.picWidth                                = pictureWidth;
     mediaCtx->encOP.picHeight                               = pictureHeight;
@@ -2232,7 +2254,7 @@ static VAStatus VpuApiEncOpen(
 
     mediaCtx->vaProfile = profile;
     if (mediaCtx->bsBuf.phys_addr == 0) {
-        mediaCtx->bsBuf.size = 0x400000;
+        mediaCtx->bsBuf.size = 0x100000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->bsBuf, ENC_BS, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory bsBuf\n");
             va = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -2240,7 +2262,7 @@ static VAStatus VpuApiEncOpen(
         }
     }
     if (mediaCtx->seqParamBuf.phys_addr == 0) {
-        mediaCtx->seqParamBuf.size = 0x6400;
+        mediaCtx->seqParamBuf.size = 0x1000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->seqParamBuf, ENC_ETC, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory seqParamBuf\n");
             va = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -2248,7 +2270,7 @@ static VAStatus VpuApiEncOpen(
         }
     }
     if (mediaCtx->picParamBuf.phys_addr == 0) {
-        mediaCtx->picParamBuf.size = 0x6400;
+        mediaCtx->picParamBuf.size = 0x1000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->picParamBuf, ENC_ETC, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory picParamBuf\n");
             va = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -2256,7 +2278,7 @@ static VAStatus VpuApiEncOpen(
         }
     }
     if (mediaCtx->sliceParamBuf.phys_addr == 0) {
-        mediaCtx->sliceParamBuf.size = 0x6400;
+        mediaCtx->sliceParamBuf.size = 0x1000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->sliceParamBuf, ENC_ETC, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory sliceParamBuf\n");
             va = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -2264,7 +2286,7 @@ static VAStatus VpuApiEncOpen(
         }
     }
     if (mediaCtx->packedParamBuf.phys_addr == 0) {
-        mediaCtx->packedParamBuf.size = 0x6400;
+        mediaCtx->packedParamBuf.size = 0x1000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->packedParamBuf, ENC_ETC, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory packedParamBuf\n");
             va = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -2272,14 +2294,13 @@ static VAStatus VpuApiEncOpen(
         }
     }
     if (mediaCtx->packedDataBuf.phys_addr == 0) {
-        mediaCtx->packedDataBuf.size = 0x6400;
+        mediaCtx->packedDataBuf.size = 0x10000;
         if (vdi_allocate_dma_memory(0, &mediaCtx->packedDataBuf, ENC_ETC, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory packedDataBuf\n");
             va = VA_STATUS_ERROR_ALLOCATION_FAILED;
             return va;
         }
     }
-
     return va;
 }
 
@@ -2305,6 +2326,10 @@ static void VpuApiEncClose(
         vdi_free_dma_memory(0, &mediaCtx->packedParamBuf, ENC_ETC, 0);
     if (mediaCtx->packedDataBuf.size != 0)
         vdi_free_dma_memory(0, &mediaCtx->packedDataBuf, ENC_ETC, 0);
+    for (int32_t index = 0; index < VPUAPI_MAX_MISC_TYPE_NUM; index++) {
+        if (mediaCtx->miscParamBuf[index].size != 0)
+            vdi_free_dma_memory(0, &mediaCtx->miscParamBuf[index], ENC_ETC, 0);
+    }
 
     VPU_EncClose(mediaCtx->encHandle);
     mediaCtx->seqInited = FALSE;
@@ -2390,7 +2415,23 @@ static VAStatus VpuApiEncCreateBuffer(
         mediaCtx->encodedBufferId = *bufId;
         break;
     case VAEncMiscParameterBufferType:
+    {
+        VAEncMiscParameterBuffer *miscParamBuf = (VAEncMiscParameterBuffer *)data;
+        vpu_buffer_t* pVb = &mediaCtx->miscParamBuf[(int32_t)miscParamBuf->type];
+
+        if (pVb->phys_addr == 0) {
+            pVb->size = VPU_ALIGN16(size);
+            if (vdi_allocate_dma_memory(0, pVb, ENC_ETC, 0) < 0) {
+                printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory VAEncMiscParameterBuffer\n");
+                va = VA_STATUS_ERROR_OPERATION_FAILED;
+                return va;
+            }
+        }
+
+        vdi_write_memory(0, pVb->phys_addr, (Uint8*)miscParamBuf->data, size, VDI_LITTLE_ENDIAN);
+        mediaCtx->miscParamEnable |= (1<<(int32_t)miscParamBuf->type);
         break;
+    }
     case VAEncSequenceParameterBufferType:
         offset = mediaCtx->seqParamNum * VPU_ALIGN16(size);
         vdi_write_memory(0, mediaCtx->seqParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
@@ -2463,10 +2504,14 @@ static VAStatus VpuApiEncSeqInit(
     if (mediaCtx->seqInited == TRUE)
         return VA_STATUS_SUCCESS;
 
-    vaInfo.seqParamNum     = mediaCtx->seqParamNum;
-    vaInfo.picParamNum     = mediaCtx->picParamNum;
-    vaInfo.seqParamBufAddr = mediaCtx->seqParamBuf.phys_addr;
-    vaInfo.picParamBufAddr = mediaCtx->picParamBuf.phys_addr;
+    vaInfo.seqParamNum            = mediaCtx->seqParamNum;
+    vaInfo.picParamNum            = mediaCtx->picParamNum;
+    vaInfo.miscEnable             = mediaCtx->miscParamEnable;
+    vaInfo.seqParamBufAddr        = mediaCtx->seqParamBuf.phys_addr;
+    vaInfo.picParamBufAddr        = mediaCtx->picParamBuf.phys_addr;
+    vaInfo.miscFrameRateBufAddr   = mediaCtx->miscParamBuf[VAEncMiscParameterTypeFrameRate].phys_addr;
+    vaInfo.miscRateControlBufAddr = mediaCtx->miscParamBuf[VAEncMiscParameterTypeRateControl].phys_addr;
+    vaInfo.miscHrdBufAddr         = mediaCtx->miscParamBuf[VAEncMiscParameterTypeHRD].phys_addr;
 
     VPU_EncGiveCommand(hdl, ENC_SET_VAAPI_INFO, &vaInfo);
 
@@ -2545,11 +2590,15 @@ static VAStatus VpuApiEncPic(
     vaInfo.packedPicParamNum      = mediaCtx->packedPicParamNum;
     vaInfo.packedSliceParamNum    = mediaCtx->packedSliceParamNum;
     vaInfo.packedSeiParamNum      = mediaCtx->packedSeiParamNum;
+    vaInfo.miscEnable             = mediaCtx->miscParamEnable;
     vaInfo.seqParamBufAddr        = mediaCtx->seqParamBuf.phys_addr;
     vaInfo.picParamBufAddr        = mediaCtx->picParamBuf.phys_addr;
     vaInfo.sliceParamBufAddr      = mediaCtx->sliceParamBuf.phys_addr;
     vaInfo.packedParamBufAddr     = mediaCtx->packedParamBuf.phys_addr;
     vaInfo.packedParamDataBufAddr = mediaCtx->packedDataBuf.phys_addr;
+    vaInfo.miscFrameRateBufAddr   = mediaCtx->miscParamBuf[VAEncMiscParameterTypeFrameRate].phys_addr;
+    vaInfo.miscRateControlBufAddr = mediaCtx->miscParamBuf[VAEncMiscParameterTypeRateControl].phys_addr;
+    vaInfo.miscHrdBufAddr         = mediaCtx->miscParamBuf[VAEncMiscParameterTypeHRD].phys_addr;
     vaInfo.fbcYOffsetBufAddr      = mediaCtx->fbcYOffsetBufMem[reconTargetIdx].phys_addr;
     vaInfo.fbcCOffsetBufAddr      = mediaCtx->fbcCOffsetBufMem[reconTargetIdx].phys_addr;
     vaInfo.mvColBufAddr           = mediaCtx->mvColBufMem[reconTargetIdx].phys_addr;
@@ -2569,11 +2618,15 @@ static VAStatus VpuApiEncPic(
     printf("[CNM_VPUAPI] packedPicParamNum: %d\n", vaInfo.packedPicParamNum);
     printf("[CNM_VPUAPI] packedSliceParamNum: %d\n", vaInfo.packedSliceParamNum);
     printf("[CNM_VPUAPI] packedSeiParamNum: %d\n", vaInfo.packedSeiParamNum);
+    printf("[CNM_VPUAPI] miscEnable: %d\n", vaInfo.miscEnable);
     printf("[CNM_VPUAPI] seqParamBufAddr: 0x%x\n", vaInfo.seqParamBufAddr);
     printf("[CNM_VPUAPI] picParamBufAddr: 0x%x\n", vaInfo.picParamBufAddr);
     printf("[CNM_VPUAPI] sliceParamBufAddr: 0x%x\n", vaInfo.sliceParamBufAddr);
     printf("[CNM_VPUAPI] packedParamBufAddr: 0x%x\n", vaInfo.packedParamBufAddr);
     printf("[CNM_VPUAPI] packedParamDataBufAddr: 0x%x\n", vaInfo.packedParamDataBufAddr);
+    printf("[CNM_VPUAPI] miscFrameRateBufAddr: 0x%x\n", vaInfo.miscFrameRateBufAddr);
+    printf("[CNM_VPUAPI] miscRateControlBufAddr: 0x%x\n", vaInfo.miscRateControlBufAddr);
+    printf("[CNM_VPUAPI] miscHrdBufAddr: 0x%x\n", vaInfo.miscHrdBufAddr);
     printf("[CNM_VPUAPI] reconTarget: %d\n", reconTargetIdx);
     printf("[CNM_VPUAPI] fbcYBufAddr: 0x%x\n", vaInfo.fbcYBufAddr);
     printf("[CNM_VPUAPI] fbcCBufAddr: 0x%x\n", vaInfo.fbcCBufAddr);
@@ -2636,7 +2689,7 @@ static VAStatus VpuApiEncPic(
         vdi_write_memory(0, mediaCtx->linearFrameBuf[renderTargetIdx].bufY, dataY, lumaSize, VDI_LITTLE_ENDIAN);
         vdi_write_memory(0, mediaCtx->linearFrameBuf[renderTargetIdx].bufCb, dataCb, chromaSize, VDI_LITTLE_ENDIAN);
         if (cbcrInterleave == FALSE)
-            vdi_read_memory(0, mediaCtx->linearFrameBuf[renderTargetIdx].bufCr, dataCr, chromaSize, VDI_LITTLE_ENDIAN);
+            vdi_write_memory(0, mediaCtx->linearFrameBuf[renderTargetIdx].bufCr, dataCr, chromaSize, VDI_LITTLE_ENDIAN);
 
         DdiMedia_UnlockSurface(ctx, mediaCtx->renderTarget);
 
@@ -2724,6 +2777,7 @@ static VAStatus VpuApiEncPic(
     mediaCtx->packedSeiParamNum   = 0;
     mediaCtx->packedParamSize     = 0;
     mediaCtx->packedDataSize      = 0;
+    mediaCtx->miscParamEnable     = 0;
 
     return VA_STATUS_SUCCESS;
 }
@@ -4890,8 +4944,10 @@ VAStatus DdiMedia_CreateConfig (
         int i;
         int j;
         int found_config_id = 0xffffffff;
+        int found_attrib_num = 0;
         bool find_profile = false;
         bool find_entrypoint = false;
+
         for (i=0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
             if (s_vpuApiAttrs[i].actual_profile == VAProfileNone) {
                 continue;
@@ -4909,7 +4965,7 @@ VAStatus DdiMedia_CreateConfig (
    
                             if (attrib_list[j].value == 0 /* Define for empty attrib */) {
                                 is_valid_attr = true;
-                                continue;
+                                break;
                             }
                             if (attrib_list[j].type == VAConfigAttribRTFormat 
                             || attrib_list[j].type == VAConfigAttribDecSliceMode
@@ -4921,7 +4977,7 @@ VAStatus DdiMedia_CreateConfig (
                             /*|| attrib_list[j].type == VAConfigAttribEncryption*/) {
                                 if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
                                     is_valid_attr = true;
-                                    continue;
+                                    break;
                                 }
                                 else if (attrib_list[j].type == VAConfigAttribRTFormat) {
                                     return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
@@ -4929,13 +4985,13 @@ VAStatus DdiMedia_CreateConfig (
                             }
                             else if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
                                 is_valid_attr = true;
-                                continue;
+                                break;
                             }
 #if 1 // will be added when wave encoder is applied
                             else if (attrib_list[j].type == VAConfigAttribEncSliceStructure) {
                                 if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
                                     is_valid_attr = true;
-                                    continue;
+                                    break;
                                 }
                                 
                                 if ((s_vpuApiAttrs[i].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS)) {
@@ -4945,7 +5001,7 @@ VAStatus DdiMedia_CreateConfig (
                                         }
                                         else {
                                             is_valid_attr = true;
-                                            continue;
+                                            break;
                                         }
                                     }
                                 }
@@ -4958,7 +5014,7 @@ VAStatus DdiMedia_CreateConfig (
                                         }
                                         else {
                                             is_valid_attr = true;
-                                            continue;
+                                            break;
                                         }
                                     }
                                 }
@@ -4967,14 +5023,14 @@ VAStatus DdiMedia_CreateConfig (
                             else if ((attrib_list[j].type == VAConfigAttribMaxPictureWidth) || (attrib_list[j].type == VAConfigAttribMaxPictureHeight) || (attrib_list[j].type == VAConfigAttribEncROI) || (attrib_list[j].type == VAConfigAttribEncDirtyRect)) {
                                 if (attrib_list[j].value <= s_vpuApiAttrs[i].value) {
                                     is_valid_attr = true;
-                                    continue;
+                                    break;
                                 }
                             }
 #if 1 // will be added when wave encoder is applied
                             else if (attrib_list[j].type == VAConfigAttribEncMaxRefFrames) {
                                 if (((attrib_list[j].value & 0xffff) <= (s_vpuApiAttrs[i].value & 0xffff)) && (attrib_list[j].value <= s_vpuApiAttrs[i].value)) { //high16 bit  can compare with this way
                                     is_valid_attr = true;
-                                    continue;
+                                    break;
                                 }
                             }
                             else if(attrib_list[j].type == VAConfigAttribEncJPEG) {
@@ -4994,12 +5050,17 @@ VAStatus DdiMedia_CreateConfig (
                     else {
                         printf("[CNM_DEBUG]%s can find valid attribute config_id=0x%x, profile=0x%x, entrypoint=0x%x\n", __FUNCTION__, s_vpuApiAttrs[i].configId, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
                         found_config_id = s_vpuApiAttrs[i].configId;
+                        if (attrib_list[j].type == VAConfigAttribRateControl) {
+                            mediaCtx->rcMode = attrib_list[j].value;
+                        }
 #ifdef USE_INTEL_CONFIG_ID
                         if (attrib_list[j].type == VAConfigAttribRateControl && attrib_list[j].value == 0x10) {
                             found_config_id = 0x42e;
                         }
 #endif
-                        break;
+                        found_attrib_num++;
+                        if (found_attrib_num == num_attribs)
+                            break;
                     }
                 }
             }

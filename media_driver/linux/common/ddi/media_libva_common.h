@@ -88,13 +88,14 @@ static int32_t atrace_switch            = 0;
 #endif
 
 #ifdef CNM_VPUAPI_INTERFACE
-#define VPUAPI_MAX_FB_NUM     100
+#define VPUAPI_MAX_FB_NUM         100
+#define VPUAPI_MAX_MISC_TYPE_NUM  20
 #endif
 #ifdef CNM_VPUAPI_INTERFACE_CAP
-#define VPUAPI_MAX_PIC_WIDTH  8192
-#define VPUAPI_MAX_PIC_HEIGHT 8192
+#define VPUAPI_MAX_PIC_WIDTH      8192
+#define VPUAPI_MAX_PIC_HEIGHT     8192
 #define VPUAPI_MIN_ENC_PIC_WIDTH  128
-#define VPUAPI_MIN_ENC_PIC_HEIGHT  128
+#define VPUAPI_MIN_ENC_PIC_HEIGHT 128
 #endif
 
 #define DDI_UNUSED(param)                      MOS_UNUSED(param)
@@ -568,6 +569,7 @@ struct DDI_MEDIA_CONTEXT
     VACodedBufferSegment *pCodedBufferSegment;
     VABufferID        encodedBufferId;
     VAProfile         vaProfile;
+    uint32_t          rcMode;
     uint32_t          seqParamNum;
     uint32_t          picParamNum;
     uint32_t          sliceParamNum;
@@ -577,6 +579,8 @@ struct DDI_MEDIA_CONTEXT
     uint32_t          packedSeiParamNum;
     uint32_t          packedParamSize;
     uint32_t          packedDataSize;
+    uint32_t          miscParamEnable;
+    vpu_buffer_t      miscParamBuf[VPUAPI_MAX_MISC_TYPE_NUM];
     vpu_buffer_t      seqParamBuf;
     vpu_buffer_t      picParamBuf;
     vpu_buffer_t      sliceParamBuf;
