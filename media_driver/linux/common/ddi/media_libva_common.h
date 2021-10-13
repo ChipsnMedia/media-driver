@@ -618,6 +618,7 @@ struct DDI_MEDIA_CONTEXT
     bool              seqInited;
     int32_t           decIdx;
     int32_t           encIdx;
+    int32_t           coreIdx;
 #endif
 };
 
