@@ -5041,8 +5041,10 @@ VAStatus DdiMedia_CreateConfig (
                     else {
                         printf("[CNM_DEBUG]%s can find valid attribute config_id=0x%x, profile=0x%x, entrypoint=0x%x\n", __FUNCTION__, s_vpuApiAttrs[i].configId, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
                         found_config_id = s_vpuApiAttrs[i].configId;
-                        if (attrib_list[j].type == VAConfigAttribRateControl) {
-                            mediaCtx->rcMode = attrib_list[j].value;
+                        if (s_vpuApiAttrs[i].actual_entrypoint == VAEntrypointEncSlice || s_vpuApiAttrs[i].actual_entrypoint == VAEntrypointEncSliceLP) {
+                            if (attrib_list[j].type == VAConfigAttribRateControl) {
+                                mediaCtx->rcMode = attrib_list[j].value;
+                            }
                         }
 #ifdef USE_INTEL_CONFIG_ID
                         if (attrib_list[j].type == VAConfigAttribRateControl && attrib_list[j].value == 0x10) {
