@@ -668,7 +668,7 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
     // else if (entrypoint == VAEntrypointVLD)    /* vld */
     if (entrypoint == VAEntrypointVLD)    /* vld */
     {
-        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2)
+        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2 || profile == VAProfileAV1Profile0 || profile == VAProfileAV1Profile1)
         {
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
@@ -1233,7 +1233,7 @@ static uint32_t CalcStride(
 }
 
 #ifdef CNM_FPGA_PLATFORM
-static void AllocateDecLinearFrameBuffer(
+static void AllocateLinearFrameBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx
 )
 {
@@ -1256,7 +1256,7 @@ static void AllocateDecLinearFrameBuffer(
     pVb->phys_addr = 0;
     pVb->size      = fbSize;
 
-    printf("[CNM_VPUAPI] %s Allocate Linear buffer i=%d, wtlFormat=%d, stride=%d, height=%d, fbSize=%d\n", __FUNCTION__, index, mediaCtx->wtlFormat, mediaCtx->linearStride, mediaCtx->linearHeight, fbSize);
+    //printf("[CNM_VPUAPI] %s Allocate Linear buffer i=%d, wtlFormat=%d, stride=%d, height=%d, fbSize=%d\n", __FUNCTION__, index, mediaCtx->wtlFormat, mediaCtx->linearStride, mediaCtx->linearHeight, fbSize);
     if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, DEC_FB_LINEAR, 0) < 0)
         printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory linearBuf\n");
 
@@ -1268,96 +1268,79 @@ static void AllocateDecLinearFrameBuffer(
         mediaCtx->linearFrameBuf[index].bufCr = -1;
 }
 
-static void FreeDecLinearFrameBuffer(
+static void FreeLinearFrameBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx,
     uint32_t           index
 )
 {
+    // printf("[CNM_VPUAPI] %s index=%d\n", __FUNCTION__, index);
     if (mediaCtx->linearFrameBufMem[index].size > 0) {
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->linearFrameBufMem[index], DEC_FB_LINEAR, 0);
     }
     vdi_release(mediaCtx->coreIdx);
 }
+#endif
 
-static void AllocateEncLinearFrameBuffer(
+static void AllocateEncInternalBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx
 )
 {
     vpu_buffer_t* pVb = NULL;
-    int32_t index = mediaCtx->numOfRenderTargets;
+    int32_t index = mediaCtx->reconTarget;
     uint32_t fbWidth = mediaCtx->linearStride;
     uint32_t fbHeight = mediaCtx->linearHeight;
-    uint32_t fbLumaSize = 0;
-    uint32_t fbChromaSize = 0;
     uint32_t fbSize = 0;
 
-    fbLumaSize   = fbWidth * fbHeight;
-    fbChromaSize = (fbWidth/2) * (fbHeight/2);
-    fbSize       = fbLumaSize + (fbChromaSize*2);
+    pVb = &mediaCtx->fbcYOffsetBufMem[index];
+    if (pVb->size == 0) {
+        fbSize         = WAVE6_FBC_LUMA_TABLE_SIZE(fbWidth, fbHeight);
+        pVb->phys_addr = 0;
+        pVb->size      = ((fbSize+4095)&~4095)+4096;
 
-    if (vdi_init(mediaCtx->coreIdx) < 0)
-        printf("[CNM_VPUAPI] FAIL vdi_init\n");
+        printf("[CNM_VPUAPI] %s Allocate FBC Y Offset buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCY_TBL, 0) < 0)
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory fbcYOffsetBuf\n");
+    }
 
-    pVb            = &mediaCtx->linearFrameBufMem[index];
-    pVb->phys_addr = 0;
-    pVb->size      = fbSize;
+    pVb = &mediaCtx->fbcCOffsetBufMem[index];
+    if (pVb->size == 0) {
+        fbSize         = WAVE6_FBC_CHROMA_TABLE_SIZE(fbWidth, fbHeight);
+        pVb->phys_addr = 0;
+        pVb->size      = ((fbSize+4095)&~4095)+4096;
 
-    printf("[CNM_VPUAPI] %s Allocate Linear buffer i=%d, wtlFormat=%d, stride=%d, height=%d, fbSize=%d\n", __FUNCTION__, index, mediaCtx->wtlFormat, mediaCtx->linearStride, mediaCtx->linearHeight, fbSize);
-    if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBC, 0) < 0)
-        printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory linearBuf\n");
+        printf("[CNM_VPUAPI] %s Allocate FBC C Offset buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCC_TBL, 0) < 0)
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory fbcCOffsetBuf\n");
+    }
 
-    mediaCtx->linearFrameBuf[index].bufY  = pVb->phys_addr;
-    mediaCtx->linearFrameBuf[index].bufCb = pVb->phys_addr + fbLumaSize;
-    if (mediaCtx->cbcrInterleave == FALSE)
-        mediaCtx->linearFrameBuf[index].bufCr = pVb->phys_addr + fbLumaSize + fbChromaSize;
-    else
-        mediaCtx->linearFrameBuf[index].bufCr = -1;
+    pVb = &mediaCtx->mvColBufMem[index];
+    if (pVb->size == 0) {
+        fbSize         = WAVE6_ENC_HEVC_MVCOL_BUF_SIZE(fbWidth, fbHeight);
+        pVb->phys_addr = 0;
+        pVb->size      = ((fbSize+4095)&~4095)+4096;
 
-    fbSize         = WAVE6_FBC_LUMA_TABLE_SIZE(fbWidth, fbHeight);
-    pVb            = &mediaCtx->fbcYOffsetBufMem[index];
-    pVb->phys_addr = 0;
-    pVb->size      = ((fbSize+4095)&~4095)+4096;
+        printf("[CNM_VPUAPI] %s Allocate MVCOL buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_MV, 0) < 0)
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory mvColBuf\n");
+    }
 
-    printf("[CNM_VPUAPI] %s Allocate FBC Y Offset buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
-    if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCY_TBL, 0) < 0)
-        printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory fbcYOffsetBuf\n"); 
+    pVb = &mediaCtx->subSampledBufMem[index];
+    if (pVb->size == 0) {
+        fbSize         = WAVE6_ENC_SUBSAMPLED_SIZE(fbWidth, fbHeight);
+        pVb->phys_addr = 0;
+        pVb->size      = ((fbSize+4095)&~4095)+4096;
 
-    fbSize         = WAVE6_FBC_CHROMA_TABLE_SIZE(fbWidth, fbHeight);
-    pVb            = &mediaCtx->fbcCOffsetBufMem[index];
-    pVb->phys_addr = 0;
-    pVb->size      = ((fbSize+4095)&~4095)+4096;
-
-    printf("[CNM_VPUAPI] %s Allocate FBC C Offset buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
-    if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCC_TBL, 0) < 0)
-        printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory fbcCOffsetBuf\n");
-
-    fbSize         = WAVE6_ENC_HEVC_MVCOL_BUF_SIZE(fbWidth, fbHeight);
-    pVb            = &mediaCtx->mvColBufMem[index];
-    pVb->phys_addr = 0;
-    pVb->size      = ((fbSize+4095)&~4095)+4096;
-
-    printf("[CNM_VPUAPI] %s Allocate MVCOL buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
-    if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_MV, 0) < 0)
-        printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory mvColBuf\n");
-
-    fbSize         = WAVE6_ENC_SUBSAMPLED_SIZE(fbWidth, fbHeight);
-    pVb            = &mediaCtx->subSampledBufMem[index];
-    pVb->phys_addr = 0;
-    pVb->size      = ((fbSize+4095)&~4095)+4096;
-
-    printf("[CNM_VPUAPI] %s Allocate SUB SAMPLED buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
-    if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_SUBSAMBUF, 0) < 0)
-        printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory subSampledBuf\n");
+        printf("[CNM_VPUAPI] %s Allocate SUB SAMPLED buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_SUBSAMBUF, 0) < 0)
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory subSampledBuf\n");
+    }
 }
 
-static void FreeEncLinearFrameBuffer(
+static void FreeEncInternalBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx,
     uint32_t           index
 )
 {
-    if (mediaCtx->linearFrameBufMem[index].size > 0) {
-        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->linearFrameBufMem[index], ENC_FBC, 0);
-    }
     if (mediaCtx->fbcYOffsetBufMem[index].size > 0) {
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->fbcYOffsetBufMem[index], ENC_FBCY_TBL, 0);
     }
@@ -1370,9 +1353,7 @@ static void FreeEncLinearFrameBuffer(
     if (mediaCtx->subSampledBufMem[index].size > 0) {
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->subSampledBufMem[index], ENC_SUBSAMBUF, 0);
     }
-    vdi_release(mediaCtx->coreIdx);
 }
-#endif
 
 static VAStatus AllocateDecFrameBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx,
@@ -1450,11 +1431,11 @@ static VAStatus AllocateDecFrameBuffer(
         frameBuf[index].chromaBitDepth = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
     }
 
-    if ((retCode = VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, seqInfo.picHeight, COMPRESSED_FRAME_MAP)) != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] Failed to register frame buffer retCode=0x%x\n", retCode);
+    if ((retCode = VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, fbHeight, COMPRESSED_FRAME_MAP)) != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to VPU_DecRegisterFrameBuffer retCode=0x%x fbc : fbCount=%d fbStride=%d, fbHeight=%d, linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", retCode, fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
-    printf("[CNM_VPUAPI] Success VPU_DecRegisterFrameBuffer fbc : fbCount=%d fbStride=%d, linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", fbCount, fbStride, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
+    printf("[CNM_VPUAPI] Success VPU_DecRegisterFrameBuffer fbc : fbCount=%d fbStride=%d, fbHeight=%d linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
 
     return VA_STATUS_SUCCESS;
 }
@@ -1503,11 +1484,7 @@ static void VpuApiAddSurfaceInfo(
     }
 
 #ifdef CNM_FPGA_PLATFORM
-    if (mediaCtx->coreIdx == 0) {
-        AllocateDecLinearFrameBuffer(mediaCtx);
-    } else {
-        AllocateEncLinearFrameBuffer(mediaCtx);
-    }
+    AllocateLinearFrameBuffer(mediaCtx);
 #endif
     mediaCtx->renderTargets[mediaCtx->numOfRenderTargets] = surfaceId;
     mediaCtx->numOfRenderTargets++;
@@ -1521,11 +1498,7 @@ static void VpuApiRemoveSurfaceInfo(
     uint32_t index = GetRenderTargetIndex(mediaCtx, surfaceId);
     if (index != -1) {
 #ifdef CNM_FPGA_PLATFORM
-    if (mediaCtx->coreIdx == 0) {
-        FreeDecLinearFrameBuffer(mediaCtx, index);
-    } else {
-        FreeEncLinearFrameBuffer(mediaCtx, index);
-    }
+        FreeLinearFrameBuffer(mediaCtx, index);
 #endif
         mediaCtx->renderTargets[index] = VA_INVALID_SURFACE;
         mediaCtx->numOfRenderTargets--;
@@ -1749,10 +1722,9 @@ static VAStatus VpuApiDecOpen(
          printf("[CNM_VPUAPI] not supported profile=0x%x\n", profile);
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
-#ifdef CNM_FPGA_PLATFORM
-    mediaCtx->surfaceWidth = (((pictureWidth)+0x01)&~0x01);
-    mediaCtx->surfaceHeight = (((pictureHeight)+0x01)&~0x01);
-#endif
+
+    mediaCtx->pictureWidth          = pictureWidth;
+    mediaCtx->pictureHeight         = pictureHeight;
     mediaCtx->decOP.bitstreamFormat = bitFormat;
     mediaCtx->decOP.coreIdx         = mediaCtx->coreIdx;
     mediaCtx->decOP.bitstreamMode   = BS_MODE_PIC_END;
@@ -1874,6 +1846,8 @@ static VAStatus VpuApiDecSeqInit(
     VPU_DecSetRdPtr(hdl, mediaCtx->bsBuf.phys_addr, TRUE);
     VPU_DecUpdateBitstreamBuffer(hdl, mediaCtx->bsSize);
     VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_FIRST_PARAM_BUFFER, &mediaCtx->paramBuf.phys_addr);
+    VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_WIDTH, &mediaCtx->pictureWidth);
+    VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_HEIGHT, &mediaCtx->pictureHeight);
 
     if ((ret=VPU_DecIssueSeqInit(hdl)) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] FAIL VPU_DecIssueSeqInit: 0x%x\n", ret);
@@ -1984,9 +1958,8 @@ static VAStatus VpuApiDecPic(
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
-    if (outputInfo.indexFrameDecoded == DECODED_IDX_FLAG_NO_FB &&
-        outputInfo.indexFrameDisplay == DISPLAY_IDX_FLAG_NO_FB) {
-        printf("[CNM_VPUAPI] FAIL indexFrameDecoded %d indexFrameDisplay %d.\n", outputInfo.indexFrameDecoded, outputInfo.indexFrameDisplay);
+    if (outputInfo.indexFrameDecoded < 0) {
+        printf("[CNM_VPUAPI] DECODE FAIL indexFrameDecoded %d indexFrameDisplay %d.\n", outputInfo.indexFrameDecoded, outputInfo.indexFrameDisplay);
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
@@ -2017,13 +1990,8 @@ static VAStatus VpuApiDecPic(
         void *buffer = NULL;
         uint8_t* surfaceOffset;
         uint8_t* dataY;
-        uint8_t* ptrDataY;
         uint8_t* dataCb;
-        uint8_t* ptrDataCb;
         uint8_t* dataCr;
-        uint8_t* ptrDataCr;
-        uint8_t* tmp;
-        int i;
 
         lumaSize = mediaCtx->linearStride * mediaCtx->linearHeight;
         if (cbcrInterleave == FALSE)
@@ -2031,7 +1999,7 @@ static VAStatus VpuApiDecPic(
         else
             chromaSize = (mediaCtx->linearStride) * (mediaCtx->linearHeight/2);
 
-        printf("[CNM_VPUAPI] Dump Linear Frame WxH : %dx%d, Surface WxH : %dx%d, wtl_format=%d\n", mediaCtx->linearStride, mediaCtx->linearHeight, mediaCtx->surfaceWidth, mediaCtx->surfaceHeight, mediaCtx->wtlFormat);
+        printf("[CNM_VPUAPI] Dump Linear Frame WxH : %dx%d, wtl_format=%d\n", mediaCtx->linearStride, mediaCtx->linearHeight, mediaCtx->wtlFormat);
         printf("[CNM_VPUAPI] Dump lumaSize : %d\n", lumaSize);
         printf("[CNM_VPUAPI] Dump chromaSize : %d\n", chromaSize);
         printf("[CNM_VPUAPI] Dump BufAddrY: 0x%x\n", outputInfo.vaDecodeBufAddrY);
@@ -2041,10 +2009,6 @@ static VAStatus VpuApiDecPic(
         dataY  = (uint8_t*)osal_malloc(lumaSize);
         dataCb = (uint8_t*)osal_malloc(chromaSize);
         dataCr = (uint8_t*)osal_malloc(chromaSize);
-
-        ptrDataY  = dataY;
-        ptrDataCb = dataCb;
-        ptrDataCr = dataCr;
 
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
         if (mediaCtx->fpYuvDebug) {
@@ -2073,62 +2037,13 @@ static VAStatus VpuApiDecPic(
         printf("[CNM_VPUAPI] Surface Info: fourcc=0x%x, lumaStride=%d, chromaUStride=%d, lumaOffset=%d, chromalUoffset=%d, chromaVOffset=%d\n", fourcc, lumaStride, chromaUStride, lumaOffset, chromaUOffset, chromaVOffset);
 
         surfaceOffset = (unsigned char*)buffer + lumaOffset;
-        // memcpy(surfaceOffset, dataY, lumaSize);
-        tmp = surfaceOffset;
-        for (i=0; i<mediaCtx->surfaceHeight; i++) {
-            if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
-                memcpy(tmp, ptrDataY, mediaCtx->surfaceWidth*2);
-            }
-            else {
-                memcpy(tmp, ptrDataY, mediaCtx->surfaceWidth);
-            }
-            tmp += lumaStride;
-            ptrDataY += mediaCtx->linearStride;
-        }
+        memcpy(surfaceOffset, dataY, lumaSize);
 
         surfaceOffset = (unsigned char*)buffer + chromaUOffset;
-        // memcpy(surfaceOffset, dataCb, chromaSize);
-        // if (cbcrInterleave == FALSE) {
-        //     surfaceOffset = (unsigned char*)buffer + chromaVOffset;
-        //     memcpy(surfaceOffset, dataCr, chromaSize);
-        // }
-        if (cbcrInterleave == TRUE) {
-            tmp = surfaceOffset;
-            for (i=0; i<mediaCtx->surfaceHeight/2; i++) {
-                if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
-                    memcpy(tmp, ptrDataCb, mediaCtx->surfaceWidth*2);
-                }
-                else {
-                    memcpy(tmp, ptrDataCb, mediaCtx->surfaceWidth);
-                }
-                tmp += chromaUStride;
-                ptrDataCb += mediaCtx->linearStride;
-            }
-        }
-        else {
-            tmp = surfaceOffset;
-            for (i=0; i<mediaCtx->surfaceHeight/4; i++) {
-                if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
-                    memcpy(tmp, ptrDataCb, mediaCtx->surfaceWidth*2);
-                }
-                else {
-                    memcpy(tmp, ptrDataCb, mediaCtx->surfaceWidth);
-                }
-                tmp += chromaUStride;
-                ptrDataCb += mediaCtx->linearStride;
-            }
-            surfaceOffset = (unsigned char*)buffer + chromaVOffset;
-            tmp = surfaceOffset;
-            for (i=0; i<mediaCtx->surfaceHeight/4; i++) {
-                if (mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_LSB || mediaCtx->wtlFormat == FORMAT_420_P10_16BIT_MSB) {
-                    memcpy(tmp, ptrDataCr, mediaCtx->surfaceWidth*2);
-                }
-                else {
-                    memcpy(tmp, ptrDataCr, mediaCtx->surfaceWidth);
-                }
-                tmp += chromaVStride;
-                ptrDataCb += mediaCtx->linearStride;
-            }
+        memcpy(surfaceOffset, dataCb, chromaSize);
+        if (cbcrInterleave == FALSE) {
+             surfaceOffset = (unsigned char*)buffer + chromaVOffset;
+             memcpy(surfaceOffset, dataCr, chromaSize);
         }
 
         DdiMedia_UnlockSurface(ctx, mediaCtx->renderTarget);
@@ -2383,6 +2298,10 @@ static void VpuApiEncClose(
     uint32_t ctxType;
     PDDI_ENCODE_CONTEXT encCtx = (PDDI_ENCODE_CONTEXT)DdiMedia_GetContextFromContextID(ctx, context, &ctxType);
     uint32_t encIndex = (uint32_t)context & DDI_MEDIA_MASK_VACONTEXTID;
+
+    for (int32_t index = 0; index < VPUAPI_MAX_FB_NUM; index++) {
+        FreeEncInternalBuffer(mediaCtx, index);
+    }
 
     if (mediaCtx->bsBuf.size != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->bsBuf, ENC_BS, 0);
@@ -2652,6 +2571,8 @@ static VAStatus VpuApiEncPic(
 
     renderTargetIdx = GetRenderTargetIndex(mediaCtx, mediaCtx->renderTarget);
     reconTargetIdx  = GetRenderTargetIndex(mediaCtx, mediaCtx->reconTarget);
+
+    AllocateEncInternalBuffer(mediaCtx);
 
     vaInfo.seqParamNum            = mediaCtx->seqParamNum;
     vaInfo.picParamNum            = mediaCtx->picParamNum;
@@ -5165,6 +5086,9 @@ VAStatus DdiMedia_CreateConfig (
     } else {
         mediaCtx->coreIdx = 0;
     }
+#ifdef CNM_FPGA_PLATFORM
+    mediaCtx->coreIdx = 0;
+#endif
 
     return status;
 #else

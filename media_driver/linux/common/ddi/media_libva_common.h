@@ -612,9 +612,9 @@ struct DDI_MEDIA_CONTEXT
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
     FILE*             fpYuvDebug;
 #endif
-    int32_t           surfaceWidth;
-    int32_t           surfaceHeight;
 #endif
+    int32_t           pictureWidth;
+    int32_t           pictureHeight;
     bool              seqInited;
     int32_t           decIdx;
     int32_t           encIdx;
