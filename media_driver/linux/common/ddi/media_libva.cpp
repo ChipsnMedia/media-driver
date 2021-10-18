@@ -1025,7 +1025,6 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
 }
 #endif
 #ifdef CNM_VPUAPI_INTERFACE
-
 Int32 LoadFirmware(
     Int32       productId,
     Uint8**     retFirmware,
@@ -1274,85 +1273,148 @@ static void FreeLinearFrameBuffer(
 )
 {
     // printf("[CNM_VPUAPI] %s index=%d\n", __FUNCTION__, index);
-    if (mediaCtx->linearFrameBufMem[index].size > 0) {
+    if (mediaCtx->linearFrameBufMem[index].phys_addr != 0) {
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->linearFrameBufMem[index], DEC_FB_LINEAR, 0);
     }
     vdi_release(mediaCtx->coreIdx);
 }
 #endif
 
-static void AllocateEncInternalBuffer(
-    PDDI_MEDIA_CONTEXT mediaCtx
+static void VpuApiAddSurfaceInfo(
+    PDDI_MEDIA_CONTEXT mediaCtx,
+    VASurfaceID        surfaceId
+)
+{ 
+    if (mediaCtx->numOfRenderTargets == 0) {
+        DDI_MEDIA_SURFACE *mediaSurface = DdiMedia_GetSurfaceFromVASurfaceID(mediaCtx, surfaceId);
+        FrameBufferFormat wtlFormat = FORMAT_420;
+        bool cbcrInterleave = FALSE;
+        bool nv21 = FALSE;
+
+        switch (mediaSurface->format) {
+        case Media_Format_NV12:
+            wtlFormat      = FORMAT_420;
+            cbcrInterleave = TRUE;
+            nv21           = FALSE;
+            break;
+        case Media_Format_NV21:
+            wtlFormat      = FORMAT_420;
+            cbcrInterleave = TRUE;
+            nv21           = TRUE;
+            break;
+        case Media_Format_I420:
+            wtlFormat      = FORMAT_420;
+            cbcrInterleave = FALSE;
+            nv21           = FALSE;
+            break;
+        case Media_Format_P010:
+            wtlFormat      = FORMAT_420_P10_16BIT_MSB;
+            cbcrInterleave = TRUE;
+            nv21           = FALSE;
+            break;
+        default:
+            break;
+        }
+
+        mediaCtx->wtlFormat      = wtlFormat;
+        mediaCtx->cbcrInterleave = cbcrInterleave;
+        mediaCtx->nv21           = nv21;
+        mediaCtx->linearStride   = mediaSurface->iPitch;
+        mediaCtx->linearHeight   = mediaSurface->iHeight;
+    }
+
+#ifdef CNM_FPGA_PLATFORM
+    AllocateLinearFrameBuffer(mediaCtx);
+#endif
+    mediaCtx->renderTargets[mediaCtx->numOfRenderTargets] = surfaceId;
+    mediaCtx->numOfRenderTargets++;
+}
+
+static void VpuApiRemoveSurfaceInfo(
+    PDDI_MEDIA_CONTEXT mediaCtx,
+    VASurfaceID        surfaceId
 )
 {
-    vpu_buffer_t* pVb = NULL;
-    int32_t index = mediaCtx->reconTarget;
-    uint32_t fbWidth = mediaCtx->linearStride;
-    uint32_t fbHeight = mediaCtx->linearHeight;
-    uint32_t fbSize = 0;
-
-    pVb = &mediaCtx->fbcYOffsetBufMem[index];
-    if (pVb->size == 0) {
-        fbSize         = WAVE6_FBC_LUMA_TABLE_SIZE(fbWidth, fbHeight);
-        pVb->phys_addr = 0;
-        pVb->size      = ((fbSize+4095)&~4095)+4096;
-
-        printf("[CNM_VPUAPI] %s Allocate FBC Y Offset buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCY_TBL, 0) < 0)
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory fbcYOffsetBuf\n");
-    }
-
-    pVb = &mediaCtx->fbcCOffsetBufMem[index];
-    if (pVb->size == 0) {
-        fbSize         = WAVE6_FBC_CHROMA_TABLE_SIZE(fbWidth, fbHeight);
-        pVb->phys_addr = 0;
-        pVb->size      = ((fbSize+4095)&~4095)+4096;
-
-        printf("[CNM_VPUAPI] %s Allocate FBC C Offset buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCC_TBL, 0) < 0)
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory fbcCOffsetBuf\n");
-    }
-
-    pVb = &mediaCtx->mvColBufMem[index];
-    if (pVb->size == 0) {
-        fbSize         = WAVE6_ENC_HEVC_MVCOL_BUF_SIZE(fbWidth, fbHeight);
-        pVb->phys_addr = 0;
-        pVb->size      = ((fbSize+4095)&~4095)+4096;
-
-        printf("[CNM_VPUAPI] %s Allocate MVCOL buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_MV, 0) < 0)
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory mvColBuf\n");
-    }
-
-    pVb = &mediaCtx->subSampledBufMem[index];
-    if (pVb->size == 0) {
-        fbSize         = WAVE6_ENC_SUBSAMPLED_SIZE(fbWidth, fbHeight);
-        pVb->phys_addr = 0;
-        pVb->size      = ((fbSize+4095)&~4095)+4096;
-
-        printf("[CNM_VPUAPI] %s Allocate SUB SAMPLED buffer i=%d, fbSize=%d\n", __FUNCTION__, index, fbSize);
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_SUBSAMBUF, 0) < 0)
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory subSampledBuf\n");
+    uint32_t index = GetRenderTargetIndex(mediaCtx, surfaceId);
+    if (index != -1) {
+#ifdef CNM_FPGA_PLATFORM
+        FreeLinearFrameBuffer(mediaCtx, index);
+#endif
+        mediaCtx->renderTargets[index] = VA_INVALID_SURFACE;
+        mediaCtx->numOfRenderTargets--;
+        if (mediaCtx->numOfRenderTargets < 0) { // if DdiMeia_DestroyContext is called before.
+            mediaCtx->numOfRenderTargets = 0;
+        }
     }
 }
 
-static void FreeEncInternalBuffer(
-    PDDI_MEDIA_CONTEXT mediaCtx,
-    uint32_t           index
+static VAStatus VpuApiInit(
+    int32_t coreIdx
 )
 {
-    if (mediaCtx->fbcYOffsetBufMem[index].size > 0) {
-        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->fbcYOffsetBufMem[index], ENC_FBCY_TBL, 0);
+    Int32 productId;
+    Uint32 sizeInWord;
+    Uint16* pusBitCode;
+    char fwPath[100];
+    RetCode ret = RETCODE_SUCCESS;
+
+#ifdef CNM_FPGA_PLATFORM
+    vdi_init(coreIdx);
+    vdi_hw_reset(coreIdx);
+    osal_msleep(1000); // Waiting for stable state
+    if (vdi_set_timing_opt(coreIdx) == HPI_SET_TIMING_MAX) {
+        printf("[CNM_VPUAPI] Failed to optimize HPI timing\n");
     }
-    if (mediaCtx->fbcCOffsetBufMem[index].size > 0) {
-        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->fbcCOffsetBufMem[index], ENC_FBCC_TBL, 0);
+    vdi_hw_reset(coreIdx);
+    osal_msleep(1000); // Waiting for stable state
+    vdi_release(coreIdx);
+#endif
+
+    productId = VPU_GetProductId(coreIdx);
+    if (productId == -1) {
+        printf("[CNM_VPUAPI] Failed to get product ID. %d\n", productId);
+        return VA_STATUS_ERROR_OPERATION_FAILED;
     }
-    if (mediaCtx->mvColBufMem[index].size > 0) {
-        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->mvColBufMem[index], ENC_MV, 0);
+
+    printf("[CNM_VPUAPI] Product ID : %d\n", productId);
+
+    switch (productId) {
+    case PRODUCT_ID_980:
+        strcpy(fwPath, "/usr/local/lib/coda980.out");
+        break;
+    case PRODUCT_ID_517:
+        strcpy(fwPath, "/usr/local/lib/vincent.bin");
+        break;
+    case PRODUCT_ID_627:
+        strcpy(fwPath, "/usr/local/lib/seurat.bin");
+        break;
+    default:
+        printf("[CNM_VPUAPI] Unknown product ID. %d\n", productId);
+        break;
     }
-    if (mediaCtx->subSampledBufMem[index].size > 0) {
-        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->subSampledBufMem[index], ENC_SUBSAMBUF, 0);
+
+    if (LoadFirmware(productId, (Uint8**)&pusBitCode, &sizeInWord, fwPath) < 0) {
+        printf("[CNM_VPUAPI] Failed to load firmware: %s.\n", fwPath);
+        return VA_STATUS_ERROR_OPERATION_FAILED;
     }
+
+    ret = VPU_InitWithBitcode(coreIdx, (const Uint16*)pusBitCode, sizeInWord);
+    if (ret != RETCODE_CALLED_BEFORE && ret != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to boot up VPU.\n");
+        return VA_STATUS_ERROR_OPERATION_FAILED;
+    }
+
+    printf("[CNM_VPUAPI] Success boot up VPU\n");
+
+    return VA_STATUS_SUCCESS;
+}
+
+static void VpuApiDeInit(
+    int32_t coreIdx
+)
+{
+    VPU_DeInit(coreIdx);
+    printf("[CNM_VPUAPI] Success DeInit VPU\n");
 }
 
 static VAStatus AllocateDecFrameBuffer(
@@ -1438,139 +1500,6 @@ static VAStatus AllocateDecFrameBuffer(
     printf("[CNM_VPUAPI] Success VPU_DecRegisterFrameBuffer fbc : fbCount=%d fbStride=%d, fbHeight=%d linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
 
     return VA_STATUS_SUCCESS;
-}
-
-static void VpuApiAddSurfaceInfo(
-    PDDI_MEDIA_CONTEXT  mediaCtx,
-    VASurfaceID         surfaceId
-)
-{ 
-    if (mediaCtx->numOfRenderTargets == 0) {
-        DDI_MEDIA_SURFACE *mediaSurface = DdiMedia_GetSurfaceFromVASurfaceID(mediaCtx, surfaceId);
-        FrameBufferFormat wtlFormat = FORMAT_420;
-        bool cbcrInterleave = FALSE;
-        bool nv21 = FALSE;
-
-        switch (mediaSurface->format) {
-        case Media_Format_NV12:
-            wtlFormat      = FORMAT_420;
-            cbcrInterleave = TRUE;
-            nv21           = FALSE;
-            break;
-        case Media_Format_NV21:
-            wtlFormat      = FORMAT_420;
-            cbcrInterleave = TRUE;
-            nv21           = TRUE;
-            break;
-        case Media_Format_I420:
-            wtlFormat      = FORMAT_420;
-            cbcrInterleave = FALSE;
-            nv21           = FALSE;
-            break;
-        case Media_Format_P010:
-            wtlFormat      = FORMAT_420_P10_16BIT_MSB;
-            cbcrInterleave = TRUE;
-            nv21           = FALSE;
-            break;
-        default:
-            break;
-        }
-
-        mediaCtx->wtlFormat      = wtlFormat;
-        mediaCtx->cbcrInterleave = cbcrInterleave;
-        mediaCtx->nv21           = nv21;
-        mediaCtx->linearStride   = mediaSurface->iPitch;
-        mediaCtx->linearHeight   = mediaSurface->iHeight;
-    }
-
-#ifdef CNM_FPGA_PLATFORM
-    AllocateLinearFrameBuffer(mediaCtx);
-#endif
-    mediaCtx->renderTargets[mediaCtx->numOfRenderTargets] = surfaceId;
-    mediaCtx->numOfRenderTargets++;
-}
-
-static void VpuApiRemoveSurfaceInfo(
-    PDDI_MEDIA_CONTEXT  mediaCtx,
-    VASurfaceID         surfaceId
-)
-{
-    uint32_t index = GetRenderTargetIndex(mediaCtx, surfaceId);
-    if (index != -1) {
-#ifdef CNM_FPGA_PLATFORM
-        FreeLinearFrameBuffer(mediaCtx, index);
-#endif
-        mediaCtx->renderTargets[index] = VA_INVALID_SURFACE;
-        mediaCtx->numOfRenderTargets--;
-        if (mediaCtx->numOfRenderTargets < 0) { // if DdiMeia_DestroyContext is called before.
-            mediaCtx->numOfRenderTargets = 0;
-        }
-    }
-}
-
-static VAStatus VpuApiInit(int32_t coreIdx)
-{
-    Int32 productId;
-    Uint32 sizeInWord;
-    Uint16* pusBitCode;
-    char fwPath[100];
-    RetCode ret = RETCODE_SUCCESS;
-
-#ifdef CNM_FPGA_PLATFORM
-    vdi_init(coreIdx);
-    vdi_hw_reset(coreIdx);
-    osal_msleep(1000); // Waiting for stable state
-    if (vdi_set_timing_opt(coreIdx) == HPI_SET_TIMING_MAX) {
-        printf("[CNM_VPUAPI] Failed to optimize HPI timing\n");
-    }
-    vdi_hw_reset(coreIdx);
-    osal_msleep(1000); // Waiting for stable state
-    vdi_release(coreIdx);
-#endif
-
-    productId = VPU_GetProductId(coreIdx);
-    if (productId == -1) {
-        printf("[CNM_VPUAPI] Failed to get product ID. %d\n", productId);
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
-
-    printf("[CNM_VPUAPI] Product ID : %d\n", productId);
-
-    switch (productId) {
-    case PRODUCT_ID_980:
-        strcpy(fwPath, "/usr/local/lib/coda980.out");
-        break;
-    case PRODUCT_ID_517:
-        strcpy(fwPath, "/usr/local/lib/vincent.bin");
-        break;
-    case PRODUCT_ID_627:
-        strcpy(fwPath, "/usr/local/lib/seurat.bin");
-        break;
-    default:
-        printf("[CNM_VPUAPI] Unknown product ID. %d\n", productId);
-        break;
-    }
-
-    if (LoadFirmware(productId, (Uint8**)&pusBitCode, &sizeInWord, fwPath) < 0) {
-        printf("[CNM_VPUAPI] Failed to load firmware: %s.\n", fwPath);
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
-
-    ret = VPU_InitWithBitcode(coreIdx, (const Uint16*)pusBitCode, sizeInWord);
-    if (ret != RETCODE_CALLED_BEFORE && ret != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] Failed to boot up VPU.\n");
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
-
-    printf("[CNM_VPUAPI] Success boot up VPU\n");
-
-    return VA_STATUS_SUCCESS;
-}
-
-static void VpuApiDeInit(int32_t coreIdx)
-{
-    VPU_DeInit(coreIdx);
-    printf("[CNM_VPUAPI] Success DeInit VPU\n");
 }
 
 static VAStatus VpuApiDecCreateBuffer(
@@ -1659,7 +1588,6 @@ static VAStatus VpuApiDecCreateBuffer(
         printf("[CNM_VPUAPI] bsBuf : 0x%x | size : %d | bsSize : %d\n", mediaCtx->bsBuf.phys_addr + mediaCtx->bsSize, size, mediaCtx->bsSize);
         break;
     }
-
 
     return va;
 }
@@ -1797,13 +1725,13 @@ static void VpuApiDecClose(
     uint32_t decIndex = (uint32_t)context & DDI_MEDIA_MASK_VACONTEXTID;
 
     for (int32_t index = 0; index < VPUAPI_MAX_FB_NUM; index++) {
-        if (mediaCtx->frameBufMem[index].size > 0)
+        if (mediaCtx->frameBufMem[index].phys_addr != 0)
             vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->frameBufMem[index], DEC_FBC, 0);
     }
 
-    if (mediaCtx->paramBuf.size != 0)
+    if (mediaCtx->paramBuf.phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->paramBuf, DEC_ETC, 0);
-    if (mediaCtx->bsBuf.size != 0)
+    if (mediaCtx->bsBuf.phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->bsBuf, DEC_BS, 0);
 
     VPU_DecClose(mediaCtx->decHandle);
@@ -2065,6 +1993,68 @@ static VAStatus VpuApiDecPic(
     return VA_STATUS_SUCCESS;
 }
 
+static void AllocateEncInternalBuffer(
+    PDDI_MEDIA_CONTEXT mediaCtx,
+    int32_t            index
+)
+{
+    vpu_buffer_t* pVb = NULL;
+    uint32_t fbWidth = mediaCtx->linearStride;
+    uint32_t fbHeight = mediaCtx->linearHeight;
+    uint32_t fbSize = 0;
+
+    pVb = &mediaCtx->fbcYOffsetBufMem[index];
+    if (pVb->phys_addr == 0) {
+        fbSize    = WAVE6_FBC_LUMA_TABLE_SIZE(fbWidth, fbHeight);
+        pVb->size = ((fbSize+4095)&~4095)+4096;
+
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCY_TBL, 0) < 0)
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory fbcYOffsetBuf\n");
+    }
+
+    pVb = &mediaCtx->fbcCOffsetBufMem[index];
+    if (pVb->phys_addr == 0) {
+        fbSize    = WAVE6_FBC_CHROMA_TABLE_SIZE(fbWidth, fbHeight);
+        pVb->size = ((fbSize+4095)&~4095)+4096;
+
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCC_TBL, 0) < 0)
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory fbcCOffsetBuf\n");
+    }
+
+    pVb = &mediaCtx->mvColBufMem[index];
+    if (pVb->phys_addr == 0) {
+        fbSize    = WAVE6_ENC_HEVC_MVCOL_BUF_SIZE(fbWidth, fbHeight);
+        pVb->size = ((fbSize+4095)&~4095)+4096;
+
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_MV, 0) < 0)
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory mvColBuf\n");
+    }
+
+    pVb = &mediaCtx->subSampledBufMem[index];
+    if (pVb->phys_addr == 0) {
+        fbSize    = WAVE6_ENC_SUBSAMPLED_SIZE(fbWidth, fbHeight);
+        pVb->size = ((fbSize+4095)&~4095)+4096;
+
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_SUBSAMBUF, 0) < 0)
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory subSampledBuf\n");
+    }
+}
+
+static void FreeEncInternalBuffer(
+    PDDI_MEDIA_CONTEXT mediaCtx,
+    uint32_t           index
+)
+{
+    if (mediaCtx->fbcYOffsetBufMem[index].phys_addr != 0)
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->fbcYOffsetBufMem[index], ENC_FBCY_TBL, 0);
+    if (mediaCtx->fbcCOffsetBufMem[index].phys_addr != 0)
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->fbcCOffsetBufMem[index], ENC_FBCC_TBL, 0);
+    if (mediaCtx->mvColBufMem[index].phys_addr != 0)
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->mvColBufMem[index], ENC_MV, 0);
+    if (mediaCtx->subSampledBufMem[index].phys_addr != 0)
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->subSampledBufMem[index], ENC_SUBSAMBUF, 0);
+}
+
 static VAStatus AllocateEncFrameBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx,
     EncInitialInfo     seqInfo
@@ -2246,46 +2236,6 @@ static VAStatus VpuApiEncOpen(
             return va;
         }
     }
-    if (mediaCtx->seqParamBuf.phys_addr == 0) {
-        mediaCtx->seqParamBuf.size = 0x1000;
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->seqParamBuf, ENC_ETC, 0) < 0) {
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory seqParamBuf\n");
-            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
-            return va;
-        }
-    }
-    if (mediaCtx->picParamBuf.phys_addr == 0) {
-        mediaCtx->picParamBuf.size = 0x1000;
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->picParamBuf, ENC_ETC, 0) < 0) {
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory picParamBuf\n");
-            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
-            return va;
-        }
-    }
-    if (mediaCtx->sliceParamBuf.phys_addr == 0) {
-        mediaCtx->sliceParamBuf.size = 0x1000;
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->sliceParamBuf, ENC_ETC, 0) < 0) {
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory sliceParamBuf\n");
-            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
-            return va;
-        }
-    }
-    if (mediaCtx->packedParamBuf.phys_addr == 0) {
-        mediaCtx->packedParamBuf.size = 0x1000;
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->packedParamBuf, ENC_ETC, 0) < 0) {
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory packedParamBuf\n");
-            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
-            return va;
-        }
-    }
-    if (mediaCtx->packedDataBuf.phys_addr == 0) {
-        mediaCtx->packedDataBuf.size = 0x10000;
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->packedDataBuf, ENC_ETC, 0) < 0) {
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory packedDataBuf\n");
-            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
-            return va;
-        }
-    }
     return va;
 }
 
@@ -2303,20 +2253,20 @@ static void VpuApiEncClose(
         FreeEncInternalBuffer(mediaCtx, index);
     }
 
-    if (mediaCtx->bsBuf.size != 0)
+    if (mediaCtx->bsBuf.phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->bsBuf, ENC_BS, 0);
-    if (mediaCtx->seqParamBuf.size != 0)
+    if (mediaCtx->seqParamBuf.phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->seqParamBuf, ENC_ETC, 0);
-    if (mediaCtx->picParamBuf.size != 0)
+    if (mediaCtx->picParamBuf.phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->picParamBuf, ENC_ETC, 0);
-    if (mediaCtx->sliceParamBuf.size != 0)
+    if (mediaCtx->sliceParamBuf.phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->sliceParamBuf, ENC_ETC, 0);
-    if (mediaCtx->packedParamBuf.size != 0)
+    if (mediaCtx->packedParamBuf.phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->packedParamBuf, ENC_ETC, 0);
-    if (mediaCtx->packedDataBuf.size != 0)
+    if (mediaCtx->packedDataBuf.phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->packedDataBuf, ENC_ETC, 0);
     for (int32_t index = 0; index < VPUAPI_MAX_MISC_TYPE_NUM; index++) {
-        if (mediaCtx->miscParamBuf[index].size != 0)
+        if (mediaCtx->miscParamBuf[index].phys_addr != 0)
             vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->miscParamBuf[index], ENC_ETC, 0);
     }
 
@@ -2422,11 +2372,29 @@ static VAStatus VpuApiEncCreateBuffer(
         break;
     }
     case VAEncSequenceParameterBufferType:
+        if (mediaCtx->seqParamBuf.phys_addr == 0) {
+            mediaCtx->seqParamBuf.size = 0x1000;
+            if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->seqParamBuf, ENC_ETC, 0) < 0) {
+                printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory seqParamBuf\n");
+                va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+                return va;
+            }
+        }
+
         offset = mediaCtx->seqParamNum * VPU_ALIGN16(size);
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->seqParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->seqParamNum++;
         break;
     case VAEncPictureParameterBufferType:
+        if (mediaCtx->picParamBuf.phys_addr == 0) {
+            mediaCtx->picParamBuf.size = 0x1000;
+            if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->picParamBuf, ENC_ETC, 0) < 0) {
+                printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory picParamBuf\n");
+                va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+                return va;
+            }
+        }
+
         offset = mediaCtx->picParamNum * VPU_ALIGN16(size);
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->picParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->picParamNum++;
@@ -2437,11 +2405,29 @@ static VAStatus VpuApiEncCreateBuffer(
         }
         break;
     case VAEncSliceParameterBufferType:
+        if (mediaCtx->sliceParamBuf.phys_addr == 0) {
+            mediaCtx->sliceParamBuf.size = 0x1000;
+            if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->sliceParamBuf, ENC_ETC, 0) < 0) {
+                printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory sliceParamBuf\n");
+                va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+                return va;
+            }
+        }
+
         offset = mediaCtx->sliceParamNum * VPU_ALIGN16(size);
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->sliceParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->sliceParamNum++;
         break;
-    case VAEncPackedHeaderParameterBufferType: 
+    case VAEncPackedHeaderParameterBufferType:
+        if (mediaCtx->packedParamBuf.phys_addr == 0) {
+            mediaCtx->packedParamBuf.size = 0x1000;
+            if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->packedParamBuf, ENC_ETC, 0) < 0) {
+                printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory packedParamBuf\n");
+                va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+                return va;
+            }
+        }
+
         offset = mediaCtx->packedParamSize;
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->packedParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->packedParamSize += VPU_ALIGN16(size);
@@ -2465,6 +2451,15 @@ static VAStatus VpuApiEncCreateBuffer(
         }
         break;
     case VAEncPackedHeaderDataBufferType:
+        if (mediaCtx->packedDataBuf.phys_addr == 0) {
+            mediaCtx->packedDataBuf.size = 0x10000;
+            if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->packedDataBuf, ENC_ETC, 0) < 0) {
+                printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory packedDataBuf\n");
+                va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+                return va;
+            }
+        }
+
         offset = mediaCtx->packedDataSize;
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->packedDataBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->packedDataSize += VPU_ALIGN256(size);
@@ -2572,7 +2567,7 @@ static VAStatus VpuApiEncPic(
     renderTargetIdx = GetRenderTargetIndex(mediaCtx, mediaCtx->renderTarget);
     reconTargetIdx  = GetRenderTargetIndex(mediaCtx, mediaCtx->reconTarget);
 
-    AllocateEncInternalBuffer(mediaCtx);
+    AllocateEncInternalBuffer(mediaCtx, reconTargetIdx);
 
     vaInfo.seqParamNum            = mediaCtx->seqParamNum;
     vaInfo.picParamNum            = mediaCtx->picParamNum;
@@ -2738,8 +2733,8 @@ static VAStatus VpuApiEncPic(
         outputInfo.picType, outputInfo.rdPtr, outputInfo.wrPtr, outputInfo.bitstreamSize);
 
     mediaCtx->encIdx++;
-#ifdef CNM_FPGA_PLATFORM
-    {
+
+    if (outputInfo.bitstreamSize > 0) {
         uint8_t* encodedData;
         uint8_t* encodedBufPtr;
         DDI_MEDIA_BUFFER *encodedBuf = DdiMedia_GetBufferFromVABufferID(mediaCtx, mediaCtx->encodedBufferId);
@@ -2755,7 +2750,6 @@ static VAStatus VpuApiEncPic(
 
         osal_free(encodedData);
     }
-#endif
 
     printf("[CNM_VPUAPI] SUCCESS VpuApiEncPic\n");
 
@@ -4958,20 +4952,22 @@ VAStatus DdiMedia_CreateConfig (
                                 is_valid_attr = true;
                                 break;
                             }
-                            if (attrib_list[j].type == VAConfigAttribRTFormat 
-                            || attrib_list[j].type == VAConfigAttribDecSliceMode
-                            /*|| attrib_list[j].type == VAConfigAttribDecJPEG */
-                            || attrib_list[j].type == VAConfigAttribRateControl
-                            || attrib_list[j].type == VAConfigAttribEncPackedHeaders
-                            || attrib_list[j].type == VAConfigAttribEncIntraRefresh
-                            || attrib_list[j].type == VAConfigAttribFEIFunctionType
-                            /*|| attrib_list[j].type == VAConfigAttribEncryption*/) {
+                            if (attrib_list[j].type == VAConfigAttribRTFormat         ||
+                                attrib_list[j].type == VAConfigAttribDecSliceMode     ||
+                                attrib_list[j].type == VAConfigAttribRateControl      ||
+                                attrib_list[j].type == VAConfigAttribEncPackedHeaders ||
+                                attrib_list[j].type == VAConfigAttribEncIntraRefresh  ||
+                                attrib_list[j].type == VAConfigAttribFEIFunctionType  ||
+                                attrib_list[j].type == VAConfigAttribEncInterlaced) {
                                 if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
                                     is_valid_attr = true;
                                     break;
-                                }
-                                else if (attrib_list[j].type == VAConfigAttribRTFormat) {
-                                    return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+                                } else {
+                                    if (attrib_list[j].type == VAConfigAttribRTFormat) {
+                                        return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+                                    } else {
+                                        return VA_STATUS_ERROR_INVALID_VALUE;
+                                    }
                                 }
                             }
                             else if ((s_vpuApiAttrs[i].value & attrib_list[j].value) == attrib_list[j].value) {
@@ -5015,6 +5011,8 @@ VAStatus DdiMedia_CreateConfig (
                                 if (attrib_list[j].value <= s_vpuApiAttrs[i].value) {
                                     is_valid_attr = true;
                                     break;
+                                } else {
+                                    return VA_STATUS_ERROR_INVALID_VALUE;
                                 }
                             }
 #if 1 // will be added when wave encoder is applied
@@ -5031,8 +5029,11 @@ VAStatus DdiMedia_CreateConfig (
                         }
                     }
 
+                    // num_attrbis is 0 means user wants to get config_id without matching flavor attribute.
                     if (num_attribs == 0) {
-                        is_valid_attr = true; // num_attrbis is 0 means user wants to get config_id without matching flavor attribute.
+                        is_valid_attr = true;
+                        found_config_id = s_vpuApiAttrs[i].configId;
+                        break;
                     }
 
                     if (is_valid_attr == false) {
@@ -5069,10 +5070,10 @@ VAStatus DdiMedia_CreateConfig (
                 status = VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
             }
             else {
-                *config_id = found_config_id; 
+                *config_id = found_config_id;
                 if (*config_id == 0xffffffff) {
-                    printf("[CNM_DEBUG]-%s configid=0x%x, status=0x%x VA_STATUS_ERROR_INVALID_CONFIG\n", __FUNCTION__, *config_id, VA_STATUS_ERROR_INVALID_CONFIG);
-                    status = VA_STATUS_ERROR_INVALID_CONFIG;
+                    printf("[CNM_DEBUG]-%s configid=0x%x, status=0x%x VA_STATUS_ERROR_INVALID_VALUE\n", __FUNCTION__, *config_id, VA_STATUS_ERROR_INVALID_VALUE);
+                    status = VA_STATUS_ERROR_INVALID_VALUE;
                 }
                 else {
                     status = VA_STATUS_SUCCESS;
@@ -5189,7 +5190,7 @@ VAStatus DdiMedia_GetConfigAttributes(
                     }
                     if ((s_vpuApiAttrs[j].actual_profile == profile) && (s_vpuApiAttrs[j].actual_entrypoint == entrypoint)) {
                         if (attrib_list[i].type == s_vpuApiAttrs[j].attrType) {
-                            // printf("%s find i=%d, j=%d, profile=0x%x, entrypoint=0x%x, type1=0x%x, type2=0x%x \n", __FUNCTION__, i, j, profile, entrypoint, attrib_list[i].type, s_vpuApiAttrs[i].attrType);
+                            // printf("%s find i=%d, j=%d, profile=0x%x, entrypoint=0x%x, type1=0x%x, type2=0x%x \n", __FUNCTION__, i, j, profile, entrypoint, attrib_list[i].type, s_vpuApiAttrs[j].attrType);
                             attrib_list[i].value = s_vpuApiAttrs[j].value;
                             break;
                         }
