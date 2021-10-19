@@ -2165,6 +2165,7 @@ static VAStatus VpuApiEncOpen(
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
+    mediaCtx->rcMode = (mediaCtx->rcMode == 0) ? VA_RC_CQP : mediaCtx->rcMode;
     switch (mediaCtx->rcMode) {
     case VA_RC_CBR:
         enRateControl = true;
@@ -2185,9 +2186,6 @@ static VAStatus VpuApiEncOpen(
 
     mediaCtx->encOP.bitstreamFormat                         = bitFormat;
     mediaCtx->encOP.EncStdParam.wave6Param.internalBitDepth = bitDepth;
-    mediaCtx->encOP.EncStdParam.wave6Param.gopPreset        = PRESET_IDX_IPP;
-    mediaCtx->encOP.EncStdParam.wave6Param.frameRate        = 30;
-    mediaCtx->encOP.EncStdParam.wave6Param.vbvBufferSize    = 3000;
     mediaCtx->encOP.EncStdParam.wave6Param.enRateControl    = enRateControl;
     mediaCtx->encOP.EncStdParam.wave6Param.rcMode           = rcMode;
     mediaCtx->encOP.coreIdx                                 = mediaCtx->coreIdx;
