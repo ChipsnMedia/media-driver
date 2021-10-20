@@ -379,16 +379,15 @@ static int vpuApiCapInitEncAttributes(VAProfile profile, VAEntrypoint entrypoint
     // printf("-%s numAttributes=%d\n", __FUNCTION__, numAttributes);
     return numAttributes;
 }
-#ifdef CNM_VPUAPI_INTERFACE
-#else
-#define USE_INTEL_CONFIG_ID
-#endif
-static int VpuApiCapInit()
+
+static void VpuApiCapInit()
 {
     int i;
     int j;
     int k;
     int numAttr;
+    int decConfigId = 0;
+    int encConfigId = 0;
     VpuApiCapMap *capMap = &s_vpuApiCaps[0];
     VpuApiAttrMap *attrMap = &s_vpuApiAttrs[0];
     // printf("+%s \n", __FUNCTION__);
@@ -412,14 +411,11 @@ static int VpuApiCapInit()
     capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-        }
-        else {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], 0x00000401, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
+            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+            decConfigId++;
+        } else {
+            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+encConfigId, &attrMap[j]);
+            encConfigId++;
         }
         j = j + numAttr;
     }
@@ -432,18 +428,11 @@ static int VpuApiCapInit()
     capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+4, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
-        }
-        else {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], 0x0000040b, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
+            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+            decConfigId++;
+        } else {
+            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+encConfigId, &attrMap[j]);
+            encConfigId++;
         }
         j = j + numAttr;
     }
@@ -456,18 +445,11 @@ static int VpuApiCapInit()
     capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+0x08, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
-        }
-        else {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+i, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
+            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+            decConfigId++;
+        } else {
+            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+encConfigId, &attrMap[j]);
+            encConfigId++;
         }
         j = j + numAttr;
     }
@@ -480,18 +462,11 @@ static int VpuApiCapInit()
     capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+0x12, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
-        }
-        else {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], 0x43a, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
+            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+            decConfigId++;
+        } else {
+            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+encConfigId, &attrMap[j]);
+            encConfigId++;
         }
         j = j + numAttr;
     }
@@ -504,18 +479,11 @@ static int VpuApiCapInit()
     capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+0x16, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
-        }
-        else {
-#ifdef USE_INTEL_CONFIG_ID
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+i, &attrMap[j]);
-#else
-            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
+            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+            decConfigId++;
+        } else {
+            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+encConfigId, &attrMap[j]);
+            encConfigId++;
         }
         j = j + numAttr;
     }
@@ -524,52 +492,37 @@ static int VpuApiCapInit()
     capMap[i].profile = VAProfileVP9Profile0;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
     capMap[i].sizeOfEntrypoints = 1;
-#ifdef USE_INTEL_CONFIG_ID
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+0x1b, &attrMap[j]);
-#else
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
     j = j + numAttr;
 
     i++;
     capMap[i].profile = VAProfileVP9Profile2;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
     capMap[i].sizeOfEntrypoints = 1;
-#ifdef USE_INTEL_CONFIG_ID
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+0x1f, &attrMap[j]);
-#else
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
-
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
     j = j + numAttr;
 
     i++;
     capMap[i].profile = VAProfileAV1Profile0;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
     capMap[i].sizeOfEntrypoints = 1;
-#ifdef USE_INTEL_CONFIG_ID
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+0x20, &attrMap[j]);
-#else
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
     j = j + numAttr;
 
     i++;
     capMap[i].profile = VAProfileAV1Profile1;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
     capMap[i].sizeOfEntrypoints = 1;
-#ifdef USE_INTEL_CONFIG_ID
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+0x20, &attrMap[j]);
-#else
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
-#endif
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
     j = j + numAttr;
-
 
     s_sizeOfVpuApiCapMap = i+1;
     s_sizeOfVpuApiAttrMap = j;
     // printf("-%s s_sizeOfVpuApiCapMap=%d, s_sizeOfVpuApiAttrMap=%d\n", __FUNCTION__, s_sizeOfVpuApiCapMap, s_sizeOfVpuApiAttrMap);
-    return (i+1);
 }
 
 static VAStatus  VpuApiCapQuerySurfaceAttributes(
