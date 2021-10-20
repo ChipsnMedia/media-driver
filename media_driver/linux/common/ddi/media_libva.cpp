@@ -408,7 +408,8 @@ static int VpuApiCapInit()
     capMap[i].profile = VAProfileH264Main;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
     capMap[i].entrypoint[1] = VAEntrypointEncSlice; 
-    capMap[i].sizeOfEntrypoints = 2;
+    capMap[i].entrypoint[2] = VAEntrypointEncSliceLP;
+    capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
             numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+i, &attrMap[j]);
@@ -426,8 +427,9 @@ static int VpuApiCapInit()
     i++;
     capMap[i].profile = VAProfileH264High;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
-    capMap[i].entrypoint[1] = VAEntrypointEncSlice; 
-    capMap[i].sizeOfEntrypoints = 2;
+    capMap[i].entrypoint[1] = VAEntrypointEncSlice;
+    capMap[i].entrypoint[2] = VAEntrypointEncSliceLP;
+    capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
 #ifdef USE_INTEL_CONFIG_ID
@@ -449,8 +451,9 @@ static int VpuApiCapInit()
     i++;
     capMap[i].profile = VAProfileH264ConstrainedBaseline;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
-    capMap[i].entrypoint[1] = VAEntrypointEncSlice; 
-    capMap[i].sizeOfEntrypoints = 2;
+    capMap[i].entrypoint[1] = VAEntrypointEncSlice;
+    capMap[i].entrypoint[2] = VAEntrypointEncSliceLP;
+    capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
 #ifdef USE_INTEL_CONFIG_ID
@@ -472,8 +475,9 @@ static int VpuApiCapInit()
     i++;
     capMap[i].profile = VAProfileHEVCMain;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
-    capMap[i].entrypoint[1] = VAEntrypointEncSlice; 
-    capMap[i].sizeOfEntrypoints = 2;
+    capMap[i].entrypoint[1] = VAEntrypointEncSlice;
+    capMap[i].entrypoint[2] = VAEntrypointEncSliceLP;
+    capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
 #ifdef USE_INTEL_CONFIG_ID
@@ -495,8 +499,9 @@ static int VpuApiCapInit()
     i++;
     capMap[i].profile = VAProfileHEVCMain10;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
-    capMap[i].entrypoint[1] = VAEntrypointEncSlice; 
-    capMap[i].sizeOfEntrypoints = 2;
+    capMap[i].entrypoint[1] = VAEntrypointEncSlice;
+    capMap[i].entrypoint[2] = VAEntrypointEncSliceLP;
+    capMap[i].sizeOfEntrypoints = 3;
     for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
         if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
 #ifdef USE_INTEL_CONFIG_ID
