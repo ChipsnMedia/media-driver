@@ -598,7 +598,6 @@ struct DDI_MEDIA_CONTEXT
     VASurfaceID       renderTarget;
     VASurfaceID       reconTarget;
     int32_t           numOfRenderTargets;
-    uint32_t          minFrameBufferCount;
     VASurfaceID       renderTargets[VPUAPI_MAX_FB_NUM];
     vpu_buffer_t      frameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBufferFormat wtlFormat;
