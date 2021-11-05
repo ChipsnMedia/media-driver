@@ -637,7 +637,7 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
             attribs[i].value.value.i = VA_FOURCC_P010;
             i++;
-            
+
             // if(profile == VAProfileVP9Profile2)
             // {
             //     attribs[i].type = VASurfaceAttribPixelFormat;
