@@ -88,9 +88,14 @@ static int32_t atrace_switch            = 0;
 #endif
 
 #ifdef CNM_VPUAPI_INTERFACE
-#define VPUAPI_MAX_FB_NUM     100
-#define VPUAPI_MAX_PIC_WIDTH  8192
-#define VPUAPI_MAX_PIC_HEIGHT 8192
+#define VPUAPI_MAX_FB_NUM         100
+#define VPUAPI_MAX_MISC_TYPE_NUM  20
+#endif
+#ifdef CNM_VPUAPI_INTERFACE_CAP
+#define VPUAPI_MAX_PIC_WIDTH      8192
+#define VPUAPI_MAX_PIC_HEIGHT     8192
+#define VPUAPI_MIN_ENC_PIC_WIDTH  256
+#define VPUAPI_MIN_ENC_PIC_HEIGHT 128
 #endif
 
 #define DDI_UNUSED(param)                      MOS_UNUSED(param)
@@ -558,8 +563,29 @@ struct DDI_MEDIA_CONTEXT
     bool m_apoMosEnabled;
 #ifdef CNM_VPUAPI_INTERFACE
     DecHandle         decHandle;
+    EncHandle         encHandle;
     DecOpenParam      decOP;
+    EncOpenParam      encOP;
+    VACodedBufferSegment *pCodedBufferSegment;
+    VABufferID        encodedBufferId;
     VAProfile         vaProfile;
+    uint32_t          rcMode;
+    uint32_t          seqParamNum;
+    uint32_t          picParamNum;
+    uint32_t          sliceParamNum;
+    uint32_t          packedSeqParamNum;
+    uint32_t          packedPicParamNum;
+    uint32_t          packedSliceParamNum;
+    uint32_t          packedSeiParamNum;
+    uint32_t          packedParamSize;
+    uint32_t          packedDataSize;
+    uint32_t          miscParamEnable;
+    vpu_buffer_t      miscParamBuf[VPUAPI_MAX_MISC_TYPE_NUM];
+    vpu_buffer_t      seqParamBuf;
+    vpu_buffer_t      picParamBuf;
+    vpu_buffer_t      sliceParamBuf;
+    vpu_buffer_t      packedParamBuf;
+    vpu_buffer_t      packedDataBuf;
     vpu_buffer_t      paramBuf;
     Uint32            paramSize;
     vpu_buffer_t      bsBuf;
@@ -567,25 +593,31 @@ struct DDI_MEDIA_CONTEXT
     uint32_t          numOfSlice;
     uint32_t          linearStride;
     uint32_t          linearHeight;
+    bool              cbcrInterleave;
+    bool              nv21;
     VASurfaceID       renderTarget;
+    VASurfaceID       reconTarget;
     int32_t           numOfRenderTargets;
-    uint32_t          minFrameBufferCount;
     VASurfaceID       renderTargets[VPUAPI_MAX_FB_NUM];
     vpu_buffer_t      frameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBufferFormat wtlFormat;
-    int32_t           pictureWidth;
-    int32_t           pictureHeight;
+    vpu_buffer_t      fbcYOffsetBufMem[VPUAPI_MAX_FB_NUM];
+    vpu_buffer_t      fbcCOffsetBufMem[VPUAPI_MAX_FB_NUM];
+    vpu_buffer_t      mvColBufMem[VPUAPI_MAX_FB_NUM];
+    vpu_buffer_t      subSampledBufMem[VPUAPI_MAX_FB_NUM];
 #ifdef CNM_FPGA_PLATFORM
     vpu_buffer_t      linearFrameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBuffer       linearFrameBuf[VPUAPI_MAX_FB_NUM];
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
-    FILE *fpYuvDebug;
+    FILE*             fpYuvDebug;
 #endif
-    int32_t           surfaceWidth;
-    int32_t           surfaceHeight;
 #endif
+    int32_t           pictureWidth;
+    int32_t           pictureHeight;
     bool              seqInited;
     int32_t           decIdx;
+    int32_t           encIdx;
+    int32_t           coreIdx;
 #endif
 };
 

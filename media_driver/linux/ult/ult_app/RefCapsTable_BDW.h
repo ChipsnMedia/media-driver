@@ -23,16 +23,19 @@
 #define __REF_CAPS_TABLE_BDW_H__
 
 #include "driver_loader.h"
-#ifdef CNM_VPUAPI_INTERFACE
+#ifdef CNM_VPUAPI_INTERFACE_CAP
 std::vector<FeatureID> refFeatureIDTable_BDW = {
     { VAProfileH264Main               , VAEntrypointVLD                 },
-    // { VAProfileH264Main               , VAEntrypointEncSlice            },
+    { VAProfileH264Main               , VAEntrypointEncSlice            },
+    { VAProfileH264Main               , VAEntrypointEncSliceLP          },
     // { VAProfileH264Main               , VAEntrypointFEI                 },
     { VAProfileH264High               , VAEntrypointVLD                 },
-    // { VAProfileH264High               , VAEntrypointEncSlice            },
+    { VAProfileH264High               , VAEntrypointEncSlice            },
+    { VAProfileH264High               , VAEntrypointEncSliceLP          },
     // { VAProfileH264High               , VAEntrypointFEI                 },
     { VAProfileH264ConstrainedBaseline, VAEntrypointVLD                 },
-    // { VAProfileH264ConstrainedBaseline, VAEntrypointEncSlice            },
+    { VAProfileH264ConstrainedBaseline, VAEntrypointEncSlice            },
+    { VAProfileH264ConstrainedBaseline, VAEntrypointEncSliceLP          },
     // { VAProfileH264ConstrainedBaseline, VAEntrypointFEI                 },
     // { VAProfileMPEG2Simple            , VAEntrypointVLD                 },
     // { VAProfileMPEG2Simple            , VAEntrypointEncSlice            },
@@ -46,7 +49,11 @@ std::vector<FeatureID> refFeatureIDTable_BDW = {
     // { VAProfileNone                   , VAEntrypointVideoProc           },
     // { VAProfileNone                   , VAEntrypointStats               },
     { VAProfileHEVCMain               , VAEntrypointVLD                 },
+    { VAProfileHEVCMain               , VAEntrypointEncSlice            },
+    { VAProfileHEVCMain               , VAEntrypointEncSliceLP          },
     { VAProfileHEVCMain10             , VAEntrypointVLD                 },
+    { VAProfileHEVCMain10             , VAEntrypointEncSlice            },
+    { VAProfileHEVCMain10             , VAEntrypointEncSliceLP          },
     { VAProfileVP9Profile0            , VAEntrypointVLD                 },
     { VAProfileVP9Profile2            , VAEntrypointVLD                 },
     { VAProfileAV1Profile0            , VAEntrypointVLD                 },

@@ -27,8 +27,16 @@ using namespace std;
 
 bool CompareFeatureIDTable(vector<FeatureID> &currentTable, vector<FeatureID> &refTable)
 {
+    // printf("+%s \n", __FUNCTION__);
+    // for (auto const& c : currentTable)
+    //     printf("currentTable profile = 0x%x, entrypoint=0x%x \n", c.profile, c.entrypoint);
+
+    // for (auto const& c : refTable)
+    //     printf("refTable profile = 0x%x, entrypoint=0x%x \n", c.profile, c.entrypoint);
+
     if (currentTable.size() != refTable.size())
     {
+        // printf("%s false current_size=%d, ref_size=%d \n", __FUNCTION__, (int)currentTable.size(), (int)refTable.size());
         return false;
     }
 
