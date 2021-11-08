@@ -524,6 +524,86 @@ static void VpuApiCapInit()
     decConfigId++;
     j = j + numAttr;
 
+    i++;
+    capMap[i].profile = VAProfileMPEG2Simple;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileMPEG2Main;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileMPEG4Simple;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileMPEG4AdvancedSimple;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileMPEG4Main;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileVC1Simple;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileVC1Main;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileVC1Advanced;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileH263Baseline;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileVP8Version0_3;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
     s_sizeOfVpuApiCapMap = i+1;
     s_sizeOfVpuApiAttrMap = j;
     // printf("-%s s_sizeOfVpuApiCapMap=%d, s_sizeOfVpuApiAttrMap=%d\n", __FUNCTION__, s_sizeOfVpuApiCapMap, s_sizeOfVpuApiAttrMap);
@@ -1004,21 +1084,39 @@ Int32 LoadFirmware(
         return -1;
     }
 
-    totalRead = 0;
-    firmware = (Uint8*)osal_malloc(readSize);
-    allocSize = readSize;
-    nread = 0;
-    while (TRUE) {
-        if (allocSize < (totalRead+readSize)) {
-            allocSize += 2*nread;
-            firmware = (Uint8*)realloc(firmware, allocSize);
+    if (PRODUCT_ID_CODA_SERIES(productId)) {
+        Uint16* temp;
+        temp      = (Uint16*)osal_malloc(readSize);
+        firmware  = (Uint8*)temp;
+        totalRead = 0;
+        if (temp) {
+            Int32 code;
+            while (!osal_feof(fp) || totalRead < (readSize/2)) {
+                code = -1;
+                if (osal_fscanf(fp, "%x", &code) <= 0)
+                    break;
+
+                temp[totalRead++] = (Uint16)code;
+            }
         }
-        nread = osal_fread((void*)&firmware[totalRead], 1, readSize, fp);
-        totalRead += nread;
-        if (nread < (Int32)readSize)
-            break;
+        *retSizeInWord = totalRead;
+    } else {
+        totalRead = 0;
+        firmware  = (Uint8*)osal_malloc(readSize);
+        allocSize = readSize;
+        nread     = 0;
+        while (TRUE) {
+            if (allocSize < (totalRead+readSize)) {
+                allocSize += 2*nread;
+                firmware = (Uint8*)realloc(firmware, allocSize);
+            }
+            nread = osal_fread((void*)&firmware[totalRead], 1, readSize, fp);
+            totalRead += nread;
+            if (nread < (Int32)readSize)
+                break;
+        }
+        *retSizeInWord = (totalRead+1)/2;
     }
-    *retSizeInWord = (totalRead+1)/2;
 
     osal_fclose(fp);
 
@@ -1394,72 +1492,98 @@ static VAStatus AllocateDecFrameBuffer(
     int32_t fbStride = 0;
     int32_t fbSize = 0;
     int32_t fbCount = 0;
+    TiledMapType mapType;
     RetCode retCode;
 
     osal_memset(&fbAllocInfo, 0x00, sizeof(FrameBufferAllocInfo));
     osal_memset(frameBuf,     0x00, sizeof(FrameBuffer)*VPUAPI_MAX_FB_NUM);
 
-    format = (seqInfo.lumaBitdepth > 8 || seqInfo.chromaBitdepth > 8) ? FORMAT_420_P10_16BIT_MSB : FORMAT_420;
-    if (decOP.bitstreamFormat == STD_VP9 || decOP.bitstreamFormat == STD_AV1) {
-      fbHeight = VPU_ALIGN64(seqInfo.picHeight);
-      fbStride = CalcStride(VPU_ALIGN64(seqInfo.picWidth), format);
+    if (PRODUCT_ID_CODA_SERIES(mediaCtx->productId)) {
+        mapType  = LINEAR_FRAME_MAP;
+        fbStride = mediaCtx->linearStride;
+        fbHeight = mediaCtx->linearHeight;
+        fbCount  = seqInfo.minFrameBufferCount;
+
+        for (int32_t index = 0; index < mediaCtx->numOfRenderTargets; index++) {
+            frameBuf[index].bufY           = -1;
+            frameBuf[index].bufCb          = -1;
+            frameBuf[index].bufCr          = -1;
+            frameBuf[index].mapType        = mapType;
+            frameBuf[index].cbcrInterleave = mediaCtx->cbcrInterleave;
+            frameBuf[index].nv21           = mediaCtx->nv21;
+            frameBuf[index].format         = mediaCtx->wtlFormat;
+            frameBuf[index].stride         = mediaCtx->linearStride;
+            frameBuf[index].height         = mediaCtx->linearHeight;
+            frameBuf[index].endian         = decOP.frameEndian;
+            frameBuf[index].lumaBitDepth   = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
+            frameBuf[index].chromaBitDepth = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
+        }
     } else {
-      fbHeight = VPU_ALIGN32(seqInfo.picHeight);
-      fbStride = CalcStride(seqInfo.picWidth, format);
-    }
-    fbSize  = VPU_GetFrameBufSize(hdl, mediaCtx->coreIdx, fbStride, fbHeight, COMPRESSED_FRAME_MAP, format, mediaCtx->cbcrInterleave, NULL);
-    fbCount = seqInfo.minFrameBufferCount;
+        mapType = COMPRESSED_FRAME_MAP;
+        format  = (seqInfo.lumaBitdepth > 8 || seqInfo.chromaBitdepth > 8) ? FORMAT_420_P10_16BIT_MSB : FORMAT_420;
+        if (decOP.bitstreamFormat == STD_VP9 || decOP.bitstreamFormat == STD_AV1) {
+            fbHeight = VPU_ALIGN64(seqInfo.picHeight);
+            fbStride = CalcStride(VPU_ALIGN64(seqInfo.picWidth), format);
+        } else {
+            fbHeight = VPU_ALIGN32(seqInfo.picHeight);
+            fbStride = CalcStride(seqInfo.picWidth, format);
+        }
+        fbSize  = VPU_GetFrameBufSize(hdl, mediaCtx->coreIdx, fbStride, fbHeight, mapType, format, mediaCtx->cbcrInterleave, NULL);
+        fbCount = seqInfo.minFrameBufferCount;
 
-    fbAllocInfo.format         = format;
-    fbAllocInfo.cbcrInterleave = mediaCtx->cbcrInterleave;
-    fbAllocInfo.mapType        = COMPRESSED_FRAME_MAP;
-    fbAllocInfo.stride         = fbStride;
-    fbAllocInfo.height         = fbHeight;
-    fbAllocInfo.lumaBitDepth   = seqInfo.lumaBitdepth;
-    fbAllocInfo.chromaBitDepth = seqInfo.chromaBitdepth;
-    fbAllocInfo.num            = fbCount;
-    fbAllocInfo.endian         = decOP.frameEndian;
-    fbAllocInfo.type           = FB_TYPE_CODEC;
+        fbAllocInfo.format         = format;
+        fbAllocInfo.cbcrInterleave = mediaCtx->cbcrInterleave;
+        fbAllocInfo.mapType        = mapType;
+        fbAllocInfo.stride         = fbStride;
+        fbAllocInfo.height         = fbHeight;
+        fbAllocInfo.lumaBitDepth   = seqInfo.lumaBitdepth;
+        fbAllocInfo.chromaBitDepth = seqInfo.chromaBitdepth;
+        fbAllocInfo.num            = fbCount;
+        fbAllocInfo.endian         = decOP.frameEndian;
+        fbAllocInfo.type           = FB_TYPE_CODEC;
 
-    for (int32_t index = 0; index < fbCount; index++) {
-        pVb = &mediaCtx->frameBufMem[index];
-        pVb->size = fbSize;
-        printf("[CNM_VPUAPI] %s Allocate FBC buffer i=%d, bitDepth=%d, format=%d, fbSize=%d\n", __FUNCTION__, index, seqInfo.lumaBitdepth, format, fbSize);
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, DEC_FBC, 0) < 0) {
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory frameBuf\n");
+        for (int32_t index = 0; index < fbCount; index++) {
+            pVb = &mediaCtx->frameBufMem[index];
+            pVb->size = fbSize;
+            printf("[CNM_VPUAPI] %s Allocate FBC buffer i=%d, bitDepth=%d, format=%d, fbSize=%d\n", __FUNCTION__, index, seqInfo.lumaBitdepth, format, fbSize);
+            if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, DEC_FBC, 0) < 0) {
+                printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory frameBuf\n");
+                return VA_STATUS_ERROR_ALLOCATION_FAILED;
+            }
+            frameBuf[index].bufY  = pVb->phys_addr;
+            frameBuf[index].bufCb = -1;
+            frameBuf[index].bufCr = -1;
+            frameBuf[index].updateFbInfo = TRUE;
+        }
+
+        if ((retCode = VPU_DecAllocateFrameBuffer(hdl, fbAllocInfo, frameBuf)) != RETCODE_SUCCESS) {
+            printf("[CNM_VPUAPI] Failed to allocate frame buffer retCode=0x%x\n", retCode);
             return VA_STATUS_ERROR_ALLOCATION_FAILED;
         }
-        frameBuf[index].bufY  = pVb->phys_addr;
-        frameBuf[index].bufCb = -1;
-        frameBuf[index].bufCr = -1;
-        frameBuf[index].updateFbInfo = TRUE;
+
+        for (int32_t index = fbCount; index < fbCount + mediaCtx->numOfRenderTargets; index++) {
+            frameBuf[index].bufY           = -1;
+            frameBuf[index].bufCb          = -1;
+            frameBuf[index].bufCr          = -1;
+            frameBuf[index].mapType        = LINEAR_FRAME_MAP;
+            frameBuf[index].cbcrInterleave = mediaCtx->cbcrInterleave;
+            frameBuf[index].nv21           = mediaCtx->nv21;
+            frameBuf[index].format         = mediaCtx->wtlFormat;
+            frameBuf[index].stride         = mediaCtx->linearStride;
+            frameBuf[index].height         = mediaCtx->linearHeight;
+            frameBuf[index].endian         = decOP.frameEndian;
+            frameBuf[index].lumaBitDepth   = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
+            frameBuf[index].chromaBitDepth = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
+        }
     }
 
-    if ((retCode = VPU_DecAllocateFrameBuffer(hdl, fbAllocInfo, frameBuf)) != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] Failed to allocate frame buffer retCode=0x%x\n", retCode);
+    if ((retCode = VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, fbHeight, mapType)) != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to VPU_DecRegisterFrameBuffer retCode=0x%x fbc : fbCount=%d fbStride=%d, fbHeight=%d, linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n",
+            retCode, fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
     }
-
-    for (int32_t index = fbCount; index < fbCount + mediaCtx->numOfRenderTargets ; index++) {
-        frameBuf[index].bufY           = -1;
-        frameBuf[index].bufCb          = -1;
-        frameBuf[index].bufCr          = -1;
-        frameBuf[index].mapType        = LINEAR_FRAME_MAP;
-        frameBuf[index].cbcrInterleave = mediaCtx->cbcrInterleave;
-        frameBuf[index].nv21           = mediaCtx->nv21;
-        frameBuf[index].format         = mediaCtx->wtlFormat;
-        frameBuf[index].stride         = mediaCtx->linearStride;
-        frameBuf[index].height         = mediaCtx->linearHeight;
-        frameBuf[index].endian         = decOP.frameEndian;
-        frameBuf[index].lumaBitDepth   = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
-        frameBuf[index].chromaBitDepth = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
-    }
-
-    if ((retCode = VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, fbHeight, COMPRESSED_FRAME_MAP)) != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] Failed to VPU_DecRegisterFrameBuffer retCode=0x%x fbc : fbCount=%d fbStride=%d, fbHeight=%d, linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", retCode, fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
-        return VA_STATUS_ERROR_ALLOCATION_FAILED;
-    }
-    printf("[CNM_VPUAPI] Success VPU_DecRegisterFrameBuffer fbc : fbCount=%d fbStride=%d, fbHeight=%d linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n", fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
+    printf("[CNM_VPUAPI] Success VPU_DecRegisterFrameBuffer fbc : fbCount=%d fbStride=%d, fbHeight=%d linear : numOfRenderTargets=%d, stride=%d, bitDepth=%d, wtl_format=%d \n",
+        fbCount, fbStride, fbHeight, mediaCtx->numOfRenderTargets, mediaCtx->linearStride, (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10, mediaCtx->wtlFormat);
 
     return VA_STATUS_SUCCESS;
 }
@@ -1547,6 +1671,28 @@ static VAStatus VpuApiDecCreateBuffer(
         }
         break;
     case VASliceDataBufferType:
+        if (PRODUCT_ID_CODA_SERIES(mediaCtx->productId)) {
+            if (mediaCtx->decOP.bitstreamFormat == STD_AVC) {
+                Uint8 startCode[4] = {0x00, 0x00, 0x00, 0x01};
+                vdi_write_memory(mediaCtx->coreIdx, mediaCtx->bsBuf.phys_addr + mediaCtx->bsSize, startCode, 4, VDI_LITTLE_ENDIAN);
+                mediaCtx->bsSize += 4;
+            } else if (mediaCtx->decOP.bitstreamFormat == STD_VC1) {
+                if (mediaCtx->vaProfile == VAProfileVC1Advanced) {
+                    Uint8 startCode[4] = {0x00, 0x00, 0x01, 0x0D};
+                    vdi_write_memory(mediaCtx->coreIdx, mediaCtx->bsBuf.phys_addr + mediaCtx->bsSize, startCode, 4, VDI_LITTLE_ENDIAN);
+                    mediaCtx->bsSize += 4;
+                } else {
+                    Uint8 metaData[8] = {0x00, };
+                    metaData[0] = size&0xff;
+                    metaData[1] = (size>>8)&0xff;
+                    metaData[2] = (size>>16)&0xff;
+                    metaData[3] = 0x80;
+                    vdi_write_memory(mediaCtx->coreIdx, mediaCtx->bsBuf.phys_addr + mediaCtx->bsSize, metaData, 8, VDI_LITTLE_ENDIAN);
+                    mediaCtx->bsSize += 8;
+                }
+            }
+        }
+
         if (mediaCtx->bsBuf.size < mediaCtx->bsSize + size) {
             printf("[CNM_VPUAPI] Internal bsBuf overflow. (internal:0x%x < input:0x%x)\n", mediaCtx->bsBuf.size, mediaCtx->bsSize + size);
             va = VA_STATUS_ERROR_OPERATION_FAILED;
@@ -1577,6 +1723,7 @@ static VAStatus VpuApiDecOpen(
     VAProfile profile;
     VAEntrypoint entrypoint;
     bool findValidConfigId = false;
+    int32_t productId;
     uint32_t i = 0;
 
     for (i = 0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
@@ -1615,30 +1762,69 @@ static VAStatus VpuApiDecOpen(
     case VAProfileAV1Profile1:
         bitFormat = STD_AV1;
         break;
+    case VAProfileMPEG2Simple:
+    case VAProfileMPEG2Main:
+        bitFormat = STD_MPEG2;
+        break;
+    case VAProfileMPEG4Simple:
+    case VAProfileMPEG4AdvancedSimple:
+    case VAProfileMPEG4Main:
+        bitFormat = STD_MPEG4;
+        break;
+    case VAProfileVC1Advanced:
+    case VAProfileVC1Main:
+    case VAProfileVC1Simple:
+        bitFormat = STD_VC1;
+        break;
+    case VAProfileVP8Version0_3:
+        bitFormat = STD_VP8;
+        break;
+    case VAProfileH263Baseline:
+        bitFormat = STD_H263;
+        break;
     default:
         printf("[CNM_VPUAPI] not supported profile=0x%x\n", profile);
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
-    mediaCtx->pictureWidth          = pictureWidth;
-    mediaCtx->pictureHeight         = pictureHeight;
-    mediaCtx->decOP.bitstreamFormat = bitFormat;
-    mediaCtx->decOP.coreIdx         = mediaCtx->coreIdx;
-    mediaCtx->decOP.bitstreamMode   = BS_MODE_PIC_END;
-    mediaCtx->decOP.wtlEnable       = TRUE;
-    mediaCtx->decOP.wtlMode         = FF_FRAME;
-    mediaCtx->decOP.streamEndian    = VDI_LITTLE_ENDIAN;
-    mediaCtx->decOP.frameEndian     = VDI_LITTLE_ENDIAN;
-    mediaCtx->decOP.cbcrInterleave  = mediaCtx->cbcrInterleave;
-    mediaCtx->decOP.nv21            = mediaCtx->nv21;
-    mediaCtx->decOP.vaEnable        = TRUE;
+    if (mediaCtx->bsBuf.phys_addr == 0) {
+        mediaCtx->bsBuf.size = 0xA00000;
+        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->bsBuf, DEC_BS, 0) < 0) {
+            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory bsBuf\n");
+            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
+            return va;
+        }
+    }
+
+    productId = VPU_GetProductId(mediaCtx->coreIdx);
+    if (productId == -1) {
+        printf("[CNM_VPUAPI] Failed to get product ID. %d\n", productId);
+        return VA_STATUS_ERROR_OPERATION_FAILED;
+    }
+
+    mediaCtx->productId                 = productId;
+    mediaCtx->pictureWidth              = pictureWidth;
+    mediaCtx->pictureHeight             = pictureHeight;
+    mediaCtx->decOP.bitstreamFormat     = bitFormat;
+    mediaCtx->decOP.coreIdx             = mediaCtx->coreIdx;
+    mediaCtx->decOP.bitstreamMode       = BS_MODE_PIC_END;
+    mediaCtx->decOP.wtlEnable           = PRODUCT_ID_CODA_SERIES(productId) ? FALSE : TRUE;
+    mediaCtx->decOP.wtlMode             = FF_FRAME;
+    mediaCtx->decOP.streamEndian        = VDI_LITTLE_ENDIAN;
+    mediaCtx->decOP.frameEndian         = VDI_LITTLE_ENDIAN;
+    mediaCtx->decOP.cbcrInterleave      = mediaCtx->cbcrInterleave;
+    mediaCtx->decOP.nv21                = mediaCtx->nv21;
+    mediaCtx->decOP.vaEnable            = TRUE;
+    mediaCtx->decOP.bitstreamBuffer     = mediaCtx->bsBuf.phys_addr;
+    mediaCtx->decOP.bitstreamBufferSize = mediaCtx->bsBuf.size;
 
     if (VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] Failed to Open decoder instance\n");
         va = VA_STATUS_ERROR_OPERATION_FAILED;
         return va;
     }
-    VPU_DecGiveCommand(mediaCtx->decHandle, DEC_SET_WTL_FRAME_FORMAT, &mediaCtx->wtlFormat);
+    if (mediaCtx->decOP.wtlEnable)
+        VPU_DecGiveCommand(mediaCtx->decHandle, DEC_SET_WTL_FRAME_FORMAT, &mediaCtx->wtlFormat);
 
     DdiMediaUtil_LockMutex(&mediaCtx->DecoderMutex);
     contextHeapElement = DdiMediaUtil_AllocPVAContextFromHeap(mediaCtx->pDecoderCtxHeap);
@@ -1660,14 +1846,6 @@ static VAStatus VpuApiDecOpen(
         mediaCtx->paramBuf.size = 0xA00000;
         if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->paramBuf, DEC_ETC, 0) < 0) {
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory paramBuf\n");
-            va = VA_STATUS_ERROR_ALLOCATION_FAILED;
-            return va;
-        }
-    }
-    if (mediaCtx->bsBuf.phys_addr == 0) {
-        mediaCtx->bsBuf.size = 0xA00000;
-        if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->bsBuf, DEC_BS, 0) < 0) {
-            printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory bsBuf\n");
             va = VA_STATUS_ERROR_ALLOCATION_FAILED;
             return va;
         }
@@ -1735,9 +1913,15 @@ static VAStatus VpuApiDecSeqInit(
     DecInitialInfo seqInfo;
     BOOL seqInited = FALSE;
     Int32 intrFlag = 0;
+    Uint32 seqDoneFlag;
 
     if (mediaCtx->seqInited == TRUE)
         return VA_STATUS_SUCCESS;
+
+    if (PRODUCT_ID_CODA_SERIES(mediaCtx->productId))
+        seqDoneFlag = INT_BIT_SEQ_INIT;
+    else
+        seqDoneFlag = INT_WAVE5_INIT_SEQ;
 
     printf("[CNM_VPUAPI] %s Update BsBuf Info baseAddr=0x%x, bsSize=%d\n", __FUNCTION__, mediaCtx->bsBuf.phys_addr, mediaCtx->bsSize);
     VPU_DecSetRdPtr(hdl, mediaCtx->bsBuf.phys_addr, TRUE);
@@ -1758,7 +1942,7 @@ static VAStatus VpuApiDecSeqInit(
     }
 
     VPU_ClearInterruptEx(hdl, intrFlag);
-    if (intrFlag & (1<<INT_WAVE5_INIT_SEQ)) {
+    if (intrFlag & (1<<seqDoneFlag)) {
         seqInited = TRUE;
     }
     else {
@@ -1801,9 +1985,15 @@ static VAStatus VpuApiDecPic(
     DecParam param;
     DecOutputInfo outputInfo;
     Int32 intrFlag = 0;
+    Uint32 picDoneFlag;
 
     osal_memset(&param,      0x00, sizeof(DecParam));
     osal_memset(&outputInfo, 0x00, sizeof(DecOutputInfo));
+
+    if (PRODUCT_ID_CODA_SERIES(mediaCtx->productId))
+        picDoneFlag = INT_BIT_PIC_RUN;
+    else
+        picDoneFlag = INT_WAVE5_DEC_PIC;
 
     VPU_DecSetRdPtr(hdl, mediaCtx->bsBuf.phys_addr, TRUE);
     VPU_DecUpdateBitstreamBuffer(hdl, mediaCtx->bsSize);
@@ -1842,7 +2032,7 @@ static VAStatus VpuApiDecPic(
     }
 
     VPU_ClearInterruptEx(hdl, intrFlag);
-    if (intrFlag & (1<<INT_WAVE5_DEC_PIC)) {
+    if (intrFlag & (1<<picDoneFlag)) {
     }
     else {
         printf("[CNM_VPUAPI] VPU_DecStartOneFrame is done. but intrFlag=0x%x is wrong\n", intrFlag);
@@ -1898,8 +2088,8 @@ static VAStatus VpuApiDecPic(
         printf("[CNM_VPUAPI] Dump Linear Frame WxH : %dx%d, wtl_format=%d\n", mediaCtx->linearStride, mediaCtx->linearHeight, mediaCtx->wtlFormat);
         printf("[CNM_VPUAPI] Dump lumaSize : %d\n", lumaSize);
         printf("[CNM_VPUAPI] Dump chromaSize : %d\n", chromaSize);
-        printf("[CNM_VPUAPI] Dump BufAddrY: 0x%x\n", outputInfo.vaDecodeBufAddrY);
-        printf("[CNM_VPUAPI] Dump BufAddrCb: 0x%x\n", outputInfo.vaDecodeBufAddrCb);
+        printf("[CNM_VPUAPI] Dump BufAddrY: 0x%x\n", param.vaDecodeBufAddrY);
+        printf("[CNM_VPUAPI] Dump BufAddrCb: 0x%x\n", param.vaDecodeBufAddrCb);
         printf("[CNM_VPUAPI] Dump BufAddrCr: 0x%x\n", param.vaDecodeBufAddrCr);
 
         dataY  = (uint8_t*)osal_malloc(lumaSize);
@@ -1909,21 +2099,21 @@ static VAStatus VpuApiDecPic(
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
         if (mediaCtx->fpYuvDebug) {
             printf("[CNM_VPUAPI]+Dump YuvDebug: fp=%p, lumaSize=%d, chromSize=%d\n", mediaCtx->fpYuvDebug, lumaSize, chromaSize);
-            vdi_read_memory(mediaCtx->coreIdx, outputInfo.vaDecodeBufAddrY, dataY, lumaSize, VDI_LITTLE_ENDIAN);
+            vdi_read_memory(mediaCtx->coreIdx, param.vaDecodeBufAddrY, dataY, lumaSize, VDI_LITTLE_ENDIAN);
             fwrite((void *)dataY, 1, lumaSize, mediaCtx->fpYuvDebug);
-            vdi_read_memory(mediaCtx->coreIdx, outputInfo.vaDecodeBufAddrCb, dataCb, chromaSize, VDI_LITTLE_ENDIAN);
+            vdi_read_memory(mediaCtx->coreIdx, param.vaDecodeBufAddrCb, dataCb, chromaSize, VDI_LITTLE_ENDIAN);
             fwrite((void *)dataCb, 1, chromaSize, mediaCtx->fpYuvDebug);
             if (cbcrInterleave == FALSE) {
-                vdi_read_memory(mediaCtx->coreIdx, outputInfo.vaDecodeBufAddrCr, dataCr, chromaSize, VDI_LITTLE_ENDIAN);
+                vdi_read_memory(mediaCtx->coreIdx, param.vaDecodeBufAddrCr, dataCr, chromaSize, VDI_LITTLE_ENDIAN);
                 fwrite((void *)dataCr, 1, chromaSize, mediaCtx->fpYuvDebug);
             }
             printf("[CNM_VPUAPI]-Dump YuvDebug: fp=%p, lumaSize=%d, chromSize=%d\n", mediaCtx->fpYuvDebug, lumaSize, chromaSize);
         }
 #endif
-        vdi_read_memory(mediaCtx->coreIdx, outputInfo.vaDecodeBufAddrY, dataY, lumaSize, VDI_LITTLE_ENDIAN);
-        vdi_read_memory(mediaCtx->coreIdx, outputInfo.vaDecodeBufAddrCb, dataCb, chromaSize, VDI_LITTLE_ENDIAN);
+        vdi_read_memory(mediaCtx->coreIdx, param.vaDecodeBufAddrY, dataY, lumaSize, VDI_LITTLE_ENDIAN);
+        vdi_read_memory(mediaCtx->coreIdx, param.vaDecodeBufAddrCb, dataCb, chromaSize, VDI_LITTLE_ENDIAN);
         if (cbcrInterleave == FALSE)
-            vdi_read_memory(mediaCtx->coreIdx, outputInfo.vaDecodeBufAddrCr, dataCr, chromaSize, VDI_LITTLE_ENDIAN);
+            vdi_read_memory(mediaCtx->coreIdx, param.vaDecodeBufAddrCr, dataCr, chromaSize, VDI_LITTLE_ENDIAN);
 
         DdiMedia_LockSurface(ctx, mediaCtx->renderTarget,
                              &fourcc,
@@ -5073,6 +5263,7 @@ VAStatus DdiMedia_CreateConfig (
     } else {
         mediaCtx->coreIdx = 0;
     }
+    // update coreIdx for coda9
 #ifdef CNM_FPGA_PLATFORM
     mediaCtx->coreIdx = 0;
 #endif

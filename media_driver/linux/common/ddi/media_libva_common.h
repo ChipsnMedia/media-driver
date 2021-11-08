@@ -615,6 +615,7 @@ struct DDI_MEDIA_CONTEXT
     int32_t           pictureWidth;
     int32_t           pictureHeight;
     bool              seqInited;
+    int32_t           productId;
     int32_t           decIdx;
     int32_t           encIdx;
     int32_t           coreIdx;
