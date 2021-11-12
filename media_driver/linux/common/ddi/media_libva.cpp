@@ -650,218 +650,18 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
     }
 
     uint32_t i = 0;
-
-    // if (entrypoint == VAEntrypointVideoProc)   /* vpp */
-    // {
-    //     attribs[i].type = VASurfaceAttribPixelFormat;
-    //     attribs[i].value.type = VAGenericValueTypeInteger;
-    //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-    //     attribs[i].value.value.i = VA_FOURCC('N', 'V', '1', '2');
-    //     i++;
-
-    //     attribs[i].type = VASurfaceAttribMaxWidth;
-    //     attribs[i].value.type = VAGenericValueTypeInteger;
-    //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-    //     attribs[i].value.value.i = VP_MAX_PIC_WIDTH;
-    //     i++;
-
-    //     attribs[i].type = VASurfaceAttribMaxHeight;
-    //     attribs[i].value.type = VAGenericValueTypeInteger;
-    //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-    //     attribs[i].value.value.i = VP_MAX_PIC_HEIGHT;
-    //     i++;
-
-    //     attribs[i].type = VASurfaceAttribMinWidth;
-    //     attribs[i].value.type = VAGenericValueTypeInteger;
-    //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-    //     attribs[i].value.value.i = VP_MIN_PIC_WIDTH;
-    //     i++;
-
-    //     attribs[i].type = VASurfaceAttribMinHeight;
-    //     attribs[i].value.type = VAGenericValueTypeInteger;
-    //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-    //     attribs[i].value.value.i = VP_MIN_PIC_HEIGHT;
-    //     i++;
-
-    //     for (uint32_t j = 0; j < m_numVpSurfaceAttr; j++)
-    //     {
-    //         attribs[i].type = VASurfaceAttribPixelFormat;
-    //         attribs[i].value.type = VAGenericValueTypeInteger;
-    //         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-    //         attribs[i].value.value.i = m_vpSurfaceAttr[j];
-    //         i++;
-    //     }
-
-    //     attribs[i].type = VASurfaceAttribMemoryType;
-    //     attribs[i].value.type = VAGenericValueTypeInteger;
-    //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-    //     attribs[i].value.value.i = VA_SURFACE_ATTRIB_MEM_TYPE_VA |
-    //         VA_SURFACE_ATTRIB_MEM_TYPE_USER_PTR |
-    //         VA_SURFACE_ATTRIB_MEM_TYPE_KERNEL_DRM |
-    //         VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
-    //     i++;
-
-    //     attribs[i].type = VASurfaceAttribExternalBufferDescriptor;
-    //     attribs[i].value.type = VAGenericValueTypePointer;
-    //     attribs[i].flags = VA_SURFACE_ATTRIB_SETTABLE;
-    //     attribs[i].value.value.p = nullptr; /* ignore */
-    //     i++;
-    // }
-    // else if (entrypoint == VAEntrypointVLD)    /* vld */
-    if (entrypoint == VAEntrypointVLD)    /* vld */
-    {
-        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2 || profile == VAProfileAV1Profile0 || profile == VAProfileAV1Profile1)
-        {
+    if (entrypoint == VAEntrypointVLD) {
+        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2 || profile == VAProfileAV1Profile0 || profile == VAProfileAV1Profile1) {
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
             attribs[i].value.value.i = VA_FOURCC_P010;
             i++;
-
-            // if(profile == VAProfileVP9Profile2)
-            // {
-            //     attribs[i].type = VASurfaceAttribPixelFormat;
-            //     attribs[i].value.type = VAGenericValueTypeInteger;
-            //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-            //     attribs[i].value.value.i = VA_FOURCC_P012;
-            //     i++;
-
-            //     attribs[i].type = VASurfaceAttribPixelFormat;
-            //     attribs[i].value.type = VAGenericValueTypeInteger;
-            //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-            //     attribs[i].value.value.i = VA_FOURCC_P016;
-            //     i++;
-            // }
-        }
-        // else if(profile == VAProfileHEVCMain12)
-        // {
-        //     attribs[i].type = VASurfaceAttribPixelFormat;
-        //     attribs[i].value.type = VAGenericValueTypeInteger;
-        //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-        //     attribs[i].value.value.i = VA_FOURCC_P012;
-        //     i++;
-
-        //     attribs[i].type = VASurfaceAttribPixelFormat;
-        //     attribs[i].value.type = VAGenericValueTypeInteger;
-        //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-        //     attribs[i].value.value.i = VA_FOURCC_P016;
-        //     i++;
-        // }
-//         else if(profile == VAProfileHEVCMain422_10)
-//         {
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_YUY2;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y210;
-//             i++;
-//         }
-//         else if(profile == VAProfileHEVCMain422_12)
-//         {
-//             //hevc  rext: Y216 12/16bit 422
-// #if VA_CHECK_VERSION(1, 9, 0)
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y212;
-//             i++;
-// #endif
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y216;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_P012;
-//             i++;
-//         }
-//         else if(profile == VAProfileHEVCMain444 || profile == VAProfileVP9Profile1)
-//         {
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_AYUV;
-//             i++;
-//         }
-//         else if(profile == VAProfileHEVCMain444_10 || profile == VAProfileVP9Profile3)
-//         {
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y410;
-//             i++;
-
-//             if(profile == VAProfileVP9Profile3)
-//             {
-// #if VA_CHECK_VERSION(1, 9, 0)
-//                 attribs[i].type = VASurfaceAttribPixelFormat;
-//                 attribs[i].value.type = VAGenericValueTypeInteger;
-//                 attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//                 attribs[i].value.value.i = VA_FOURCC_Y412;
-//                 i++;
-// #endif
-
-//                 attribs[i].type = VASurfaceAttribPixelFormat;
-//                 attribs[i].value.type = VAGenericValueTypeInteger;
-//                 attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//                 attribs[i].value.value.i = VA_FOURCC_Y416;
-//                 i++;
-//             }
-//         }
-//         else if(profile == VAProfileHEVCMain444_12)
-//         {
-// #if VA_CHECK_VERSION(1, 9, 0)
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y412;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y212;
-//             i++;
-// #endif
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y416;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_P012;
-//             i++;
-//         }
-//         else if (profile == VAProfileJPEGBaseline)
-//         {
-//             for (uint32_t j = 0; j < m_numJpegSurfaceAttr; j++)
-//             {
-//                 attribs[i].type = VASurfaceAttribPixelFormat;
-//                 attribs[i].value.type = VAGenericValueTypeInteger;
-//                 attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//                 attribs[i].value.value.i = m_jpegSurfaceAttr[j];
-//                 i++;
-//             }
-//         }
-        else
-        {
+        } else {
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-            attribs[i].value.value.i = VA_FOURCC('N', 'V', '1', '2');
+            attribs[i].value.value.i = VA_FOURCC_NV12;
             i++;
         }
 
@@ -908,91 +708,30 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
         attribs[i].type = VASurfaceAttribMemoryType;
         attribs[i].value.type = VAGenericValueTypeInteger;
         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-        attribs[i].value.value.i = VA_SURFACE_ATTRIB_MEM_TYPE_VA |
-            VA_SURFACE_ATTRIB_MEM_TYPE_USER_PTR |
-            VA_SURFACE_ATTRIB_MEM_TYPE_KERNEL_DRM |
-            VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
+        attribs[i].value.value.i = VA_SURFACE_ATTRIB_MEM_TYPE_VA         |
+                                   VA_SURFACE_ATTRIB_MEM_TYPE_USER_PTR   |
+                                   VA_SURFACE_ATTRIB_MEM_TYPE_KERNEL_DRM |
+                                   VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
         i++;
-    }
-    else if(entrypoint == VAEntrypointEncSlice || entrypoint == VAEntrypointEncSliceLP || entrypoint == VAEntrypointEncPicture || entrypoint == VAEntrypointFEI)
-    {
-        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2)
-        {
+    } else if(entrypoint == VAEntrypointEncSlice || entrypoint == VAEntrypointEncSliceLP || entrypoint == VAEntrypointEncPicture || entrypoint == VAEntrypointFEI) {
+        if (profile == VAProfileHEVCMain10 || profile == VAProfileAV1Profile0 || profile == VAProfileAV1Profile1) {
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-            attribs[i].value.value.i = VA_FOURCC('P', '0', '1', '0');
+            attribs[i].value.value.i = VA_FOURCC_P010;
             i++;
-        }
-//         else if(profile == VAProfileHEVCMain12)
-//         {
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_P012;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_P016;
-//             i++;
-//         }
-//         else if(profile == VAProfileHEVCMain422_10)
-//         {
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_YUY2;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y210;
-//             i++;
-//         }
-//         else if(profile == VAProfileHEVCMain422_12)
-//         {
-//             //hevc  rext: Y216 12/16bit 422
-// #if VA_CHECK_VERSION(1, 9, 0)
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y212;
-//             i++;
-// #endif
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y216;
-//             i++;
-//         }
-//         else if (profile == VAProfileJPEGBaseline)
-//         {
-//             for (uint32_t j = 0; j < m_numJpegEncSurfaceAttr; j++)
-//             {
-//                 attribs[i].type = VASurfaceAttribPixelFormat;
-//                 attribs[i].value.type = VAGenericValueTypeInteger;
-//                 attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//                 attribs[i].value.value.i = m_jpegEncSurfaceAttr[j];
-//                 i++;
-//             }
-//         }
-        else
-        {
+        } else {
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-            attribs[i].value.value.i = VA_FOURCC('N', 'V', '1', '2');
+            attribs[i].value.value.i = VA_FOURCC_NV12;
             i++;
         }
+
         attribs[i].type = VASurfaceAttribMaxWidth;
         attribs[i].value.type = VAGenericValueTypeInteger;
         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
         attribs[i].value.value.i = VPUAPI_MAX_PIC_WIDTH;
-
 //         if(profile == VAProfileJPEGBaseline)
 //         {
 //             attribs[i].value.value.i = ENCODE_JPEG_MAX_PIC_WIDTH;
@@ -1040,10 +779,10 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
         attribs[i].type = VASurfaceAttribMemoryType;
         attribs[i].value.type = VAGenericValueTypeInteger;
         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-        attribs[i].value.value.i = VA_SURFACE_ATTRIB_MEM_TYPE_VA |
-            VA_SURFACE_ATTRIB_MEM_TYPE_USER_PTR |
-            VA_SURFACE_ATTRIB_MEM_TYPE_KERNEL_DRM |
-            VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
+        attribs[i].value.value.i = VA_SURFACE_ATTRIB_MEM_TYPE_VA         |
+                                   VA_SURFACE_ATTRIB_MEM_TYPE_USER_PTR   |
+                                   VA_SURFACE_ATTRIB_MEM_TYPE_KERNEL_DRM |
+                                   VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
         i++;
     }
     else
@@ -2053,7 +1792,7 @@ static VAStatus VpuApiDecPic(
         printf("[CNM_VPUAPI] Warning Error Block: %d\n", outputInfo.numOfErrMBs);
     }
 
-    printf("[CNM_VPUAPI] IDX %d | PIC %d | NAL %d | BufAddrY : 0x%x | BufAddrCb : 0x%x | BufAddrCr : 0x%x |  BYTEPOS 0x%x ~ 0x%x | CONSUME : %d | DISP %dx%d\n",
+    printf("[CNM_VPUAPI] IDX %d | PIC %d | NAL %d | BufAddrY : 0x%x | BufAddrCb : 0x%x | BufAddrCr : 0x%x | BYTEPOS 0x%x ~ 0x%x | CONSUME : %d | DISP %dx%d\n",
         mediaCtx->decIdx,
         outputInfo.picType, outputInfo.nalType,
         outputInfo.vaDecodeBufAddrY, outputInfo.vaDecodeBufAddrCb, outputInfo.vaDecodeBufAddrCr,
@@ -2304,7 +2043,6 @@ static VAStatus VpuApiEncOpen(
 
     switch (profile) {
     case VAProfileH264High:
-        bitDepth = 10;
     case VAProfileH264Main:
     case VAProfileH264ConstrainedBaseline:
         bitFormat = STD_AVC;
@@ -2343,6 +2081,7 @@ static VAStatus VpuApiEncOpen(
     }
 
     mediaCtx->encOP.bitstreamFormat                         = bitFormat;
+    mediaCtx->encOP.srcFormat                               = mediaCtx->wtlFormat;
     mediaCtx->encOP.EncStdParam.wave6Param.internalBitDepth = bitDepth;
     mediaCtx->encOP.EncStdParam.wave6Param.enRateControl    = enRateControl;
     mediaCtx->encOP.EncStdParam.wave6Param.rcMode           = rcMode;
@@ -2351,6 +2090,9 @@ static VAStatus VpuApiEncOpen(
     mediaCtx->encOP.picHeight                               = pictureHeight;
     mediaCtx->encOP.streamEndian                            = VDI_LITTLE_ENDIAN;
     mediaCtx->encOP.frameEndian                             = VDI_LITTLE_ENDIAN;
+    /* In case of 10bit, Intput source data format is p010le. */
+    /* To read p010le format correctly, change the source endian value to BYTE_SWAP. */
+    mediaCtx->encOP.sourceEndian                            = (mediaCtx->wtlFormat == FORMAT_420) ? VDI_LITTLE_ENDIAN : VDI_128BIT_LE_BYTE_SWAP;
     mediaCtx->encOP.cbcrInterleave                          = mediaCtx->cbcrInterleave;
     mediaCtx->encOP.nv21                                    = mediaCtx->nv21;
     mediaCtx->encOP.vaEnable                                = TRUE;
