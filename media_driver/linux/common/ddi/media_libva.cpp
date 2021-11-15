@@ -637,7 +637,7 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
             attribs[i].value.value.i = VA_FOURCC_P010;
             i++;
-            
+
             // if(profile == VAProfileVP9Profile2)
             // {
             //     attribs[i].type = VASurfaceAttribPixelFormat;
@@ -1533,8 +1533,12 @@ static VAStatus VpuApiDecCreateBuffer(
             void *convData = NULL;
             convData = ConvertBufferData(mediaCtx, type, size, (uint8_t*)data);
             if (convData) {
-                printf("[CNM_VPUAPI] type : %d | numElements : %d\n", type, numElements);
-                printf("[CNM_VPUAPI] paramBuf : 0x%x | size : %d\n", mediaCtx->paramBuf.phys_addr + mediaCtx->paramSize, size);
+                if (mediaCtx->paramBuf.size < mediaCtx->paramSize + VPU_ALIGN16(size)) {
+                    printf("[CNM_VPUAPI] Internal paramBuf overflow. (internal:0x%x < input:0x%x)\n", mediaCtx->paramBuf.size, mediaCtx->paramSize + VPU_ALIGN16(size));
+                    va = VA_STATUS_ERROR_OPERATION_FAILED;
+                    free(convData);
+                    return va;
+                }
 
                 vdi_write_memory(mediaCtx->coreIdx, mediaCtx->paramBuf.phys_addr + mediaCtx->paramSize, (Uint8*)convData, VPU_ALIGN16(size), VDI_LITTLE_ENDIAN);
                 mediaCtx->paramSize += VPU_ALIGN16(size);
@@ -1543,11 +1547,14 @@ static VAStatus VpuApiDecCreateBuffer(
         }
         break;
     case VASliceDataBufferType:
+        if (mediaCtx->bsBuf.size < mediaCtx->bsSize + size) {
+            printf("[CNM_VPUAPI] Internal bsBuf overflow. (internal:0x%x < input:0x%x)\n", mediaCtx->bsBuf.size, mediaCtx->bsSize + size);
+            va = VA_STATUS_ERROR_OPERATION_FAILED;
+            return va;
+        }
+
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->bsBuf.phys_addr + mediaCtx->bsSize, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->bsSize += size;
-
-        printf("[CNM_VPUAPI] type : %d | numElements : %d\n", type, numElements);
-        printf("[CNM_VPUAPI] bsBuf : 0x%x | size : %d | bsSize : %d\n", mediaCtx->bsBuf.phys_addr + mediaCtx->bsSize, size, mediaCtx->bsSize);
         break;
     }
 
@@ -2107,7 +2114,6 @@ static VAStatus VpuApiEncOpen(
 
     switch (profile) {
     case VAProfileH264High:
-        bitDepth = 10;
     case VAProfileH264Main:
     case VAProfileH264ConstrainedBaseline:
         bitFormat = STD_AVC;
@@ -2146,6 +2152,7 @@ static VAStatus VpuApiEncOpen(
     }
 
     mediaCtx->encOP.bitstreamFormat                         = bitFormat;
+    mediaCtx->encOP.srcFormat                               = mediaCtx->wtlFormat;
     mediaCtx->encOP.EncStdParam.wave6Param.internalBitDepth = bitDepth;
     mediaCtx->encOP.EncStdParam.wave6Param.enRateControl    = enRateControl;
     mediaCtx->encOP.EncStdParam.wave6Param.rcMode           = rcMode;
@@ -2154,6 +2161,9 @@ static VAStatus VpuApiEncOpen(
     mediaCtx->encOP.picHeight                               = pictureHeight;
     mediaCtx->encOP.streamEndian                            = VDI_LITTLE_ENDIAN;
     mediaCtx->encOP.frameEndian                             = VDI_LITTLE_ENDIAN;
+    /* In case of 10bit, Intput source data format is p010le. */
+    /* To read p010le format correctly, change the source endian value to BYTE_SWAP. */
+    mediaCtx->encOP.sourceEndian                            = (mediaCtx->wtlFormat == FORMAT_420) ? VDI_LITTLE_ENDIAN : VDI_128BIT_LE_BYTE_SWAP;
     mediaCtx->encOP.cbcrInterleave                          = mediaCtx->cbcrInterleave;
     mediaCtx->encOP.nv21                                    = mediaCtx->nv21;
     mediaCtx->encOP.vaEnable                                = TRUE;
@@ -2341,6 +2351,12 @@ static VAStatus VpuApiEncCreateBuffer(
         }
 
         offset = mediaCtx->seqParamNum * VPU_ALIGN16(size);
+        if (mediaCtx->seqParamBuf.size < offset + VPU_ALIGN16(size)) {
+            printf("[CNM_VPUAPI] Internal seqParamBuf overflow. (internal:0x%x < input:0x%x)\n", mediaCtx->seqParamBuf.size, offset + VPU_ALIGN16(size));
+            va = VA_STATUS_ERROR_OPERATION_FAILED;
+            return va;
+        }
+
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->seqParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->seqParamNum++;
         break;
@@ -2355,6 +2371,12 @@ static VAStatus VpuApiEncCreateBuffer(
         }
 
         offset = mediaCtx->picParamNum * VPU_ALIGN16(size);
+        if (mediaCtx->picParamBuf.size < offset + VPU_ALIGN16(size)) {
+            printf("[CNM_VPUAPI] Internal picParamBuf overflow. (internal:0x%x < input:0x%x)\n", mediaCtx->picParamBuf.size, offset + VPU_ALIGN16(size));
+            va = VA_STATUS_ERROR_OPERATION_FAILED;
+            return va;
+        }
+
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->picParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->picParamNum++;
 
@@ -2368,7 +2390,7 @@ static VAStatus VpuApiEncCreateBuffer(
         break;
     case VAEncSliceParameterBufferType:
         if (mediaCtx->sliceParamBuf.phys_addr == 0) {
-            mediaCtx->sliceParamBuf.size = 0x1000;
+            mediaCtx->sliceParamBuf.size = 0x70000;
             if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->sliceParamBuf, ENC_ETC, 0) < 0) {
                 printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory sliceParamBuf\n");
                 va = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -2377,12 +2399,18 @@ static VAStatus VpuApiEncCreateBuffer(
         }
 
         offset = mediaCtx->sliceParamNum * VPU_ALIGN16(size);
+        if (mediaCtx->sliceParamBuf.size < offset + VPU_ALIGN16(size)) {
+            printf("[CNM_VPUAPI] Internal sliceParamBuf overflow. (internal:0x%x < input:0x%x)\n", mediaCtx->sliceParamBuf.size, offset + VPU_ALIGN16(size));
+            va = VA_STATUS_ERROR_OPERATION_FAILED;
+            return va;
+        }
+
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->sliceParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->sliceParamNum++;
         break;
     case VAEncPackedHeaderParameterBufferType:
         if (mediaCtx->packedParamBuf.phys_addr == 0) {
-            mediaCtx->packedParamBuf.size = 0x1000;
+            mediaCtx->packedParamBuf.size = 0x2000;
             if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->packedParamBuf, ENC_ETC, 0) < 0) {
                 printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory packedParamBuf\n");
                 va = VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -2391,6 +2419,12 @@ static VAStatus VpuApiEncCreateBuffer(
         }
 
         offset = mediaCtx->packedParamSize;
+        if (mediaCtx->packedParamBuf.size < offset + VPU_ALIGN16(size)) {
+            printf("[CNM_VPUAPI] Internal packedParamBuf overflow. (internal:0x%x < input:0x%x)\n", mediaCtx->packedParamBuf.size, offset + VPU_ALIGN16(size));
+            va = VA_STATUS_ERROR_OPERATION_FAILED;
+            return va;
+        }
+
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->packedParamBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->packedParamSize += VPU_ALIGN16(size);
         
@@ -2423,6 +2457,12 @@ static VAStatus VpuApiEncCreateBuffer(
         }
 
         offset = mediaCtx->packedDataSize;
+        if (mediaCtx->packedDataBuf.size < offset + VPU_ALIGN256(size)) {
+            printf("[CNM_VPUAPI] Internal packedDataBuf overflow. (internal:0x%x < input:0x%x)\n", mediaCtx->packedDataBuf.size, offset + VPU_ALIGN256(size));
+            va = VA_STATUS_ERROR_OPERATION_FAILED;
+            return va;
+        }
+
         vdi_write_memory(mediaCtx->coreIdx, mediaCtx->packedDataBuf.phys_addr + offset, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->packedDataSize += VPU_ALIGN256(size);
         break;
@@ -10430,4 +10470,3 @@ MEDIAAPI_EXPORT VAStatus DdiMedia_MapBuffer2(
 #ifdef __cplusplus
 }
 #endif
-
