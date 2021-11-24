@@ -1320,17 +1320,21 @@ static VAStatus VpuApiInit(
     char fwPath[100];
     RetCode ret = RETCODE_SUCCESS;
 
-#ifdef CNM_FPGA_PLATFORM
     vdi_init(coreIdx);
-    vdi_hw_reset(coreIdx);
-    osal_msleep(1000); // Waiting for stable state
-    if (vdi_set_timing_opt(coreIdx) == HPI_SET_TIMING_MAX) {
-        printf("[CNM_VPUAPI] Failed to optimize HPI timing\n");
-    }
-    vdi_hw_reset(coreIdx);
-    osal_msleep(1000); // Waiting for stable state
-    vdi_release(coreIdx);
+    vdi_vaapi_driver_lock(coreIdx);
+
+    if (!VPU_IsInit(coreIdx)) {
+        printf("[CNM_VPUAPI] Start HW INIT.\n");
+#ifdef CNM_FPGA_PLATFORM
+        vdi_hw_reset(coreIdx);
+        osal_msleep(1000); // Waiting for stable state
+        if (vdi_set_timing_opt(coreIdx) == HPI_SET_TIMING_MAX) {
+            printf("[CNM_VPUAPI] Failed to optimize HPI timing\n");
+        }
+        vdi_hw_reset(coreIdx);
+        osal_msleep(1000); // Waiting for stable state
 #endif
+    }
 
     productId = VPU_GetProductId(coreIdx);
     if (productId == -1) {
@@ -1365,6 +1369,9 @@ static VAStatus VpuApiInit(
         printf("[CNM_VPUAPI] Failed to boot up VPU.\n");
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
+
+    vdi_vaapi_driver_unlock(coreIdx);
+    vdi_release(coreIdx);
 
     printf("[CNM_VPUAPI] Success boot up VPU\n");
 
@@ -5930,15 +5937,20 @@ VAStatus DdiMedia_CreateContext (
     vaStatus = VpuApiInit(mediaDrvCtx->coreIdx);
     if (config_id < VPUAPI_ENCODER_CONFIG_ID_START) {
         vaStatus = VpuApiDecOpen(ctx, config_id, picture_width, picture_height, context);
+        if (vaStatus != VA_STATUS_SUCCESS) {
+            VpuApiDecClose(ctx, *context);
+            VpuApiDeInit(mediaDrvCtx->coreIdx);
+        }
     } else if (config_id < VPUAPI_MAX_CONFIG_ID) {
         vaStatus = VpuApiEncOpen(ctx, config_id, picture_width, picture_height, context);
+        if (vaStatus != VA_STATUS_SUCCESS) {
+            VpuApiEncClose(ctx, *context);
+            VpuApiDeInit(mediaDrvCtx->coreIdx);
+        }
     } else {
         DDI_ASSERTMESSAGE("DDI: Invalid config_id");
-        vaStatus = VA_STATUS_ERROR_INVALID_CONFIG;
-    }
-
-    if (vaStatus != VA_STATUS_SUCCESS) {
         VpuApiDeInit(mediaDrvCtx->coreIdx);
+        vaStatus = VA_STATUS_ERROR_INVALID_CONFIG;
     }
 #else
     if(mediaDrvCtx->m_caps->IsDecConfigId(config_id))
