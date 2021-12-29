@@ -1580,6 +1580,7 @@ static VAStatus VpuApiDecOpen(
     PDDI_MEDIA_VACONTEXT_HEAP_ELEMENT contextHeapElement;
     VAStatus va = VA_STATUS_SUCCESS;
     PDDI_DECODE_CONTEXT decCtx = (PDDI_DECODE_CONTEXT)MOS_AllocAndZeroMemory(sizeof(DDI_DECODE_CONTEXT));
+    RetCode retCode;
     CodStd bitFormat = STD_HEVC;
     VAProfile profile;
     VAEntrypoint entrypoint;
@@ -1640,12 +1641,19 @@ static VAStatus VpuApiDecOpen(
     mediaCtx->decOP.nv21            = mediaCtx->nv21;
     mediaCtx->decOP.vaEnable        = TRUE;
 
-    if (VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP) != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] Failed to Open decoder instance\n");
+    retCode = VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP);
+    if (retCode != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] %s Failed to Open decoder instance retCode=0x%x\n", __FUNCTION__, retCode);
+        printf("    >>> bitstreamFormat=%d, bitstreamMode=%d, coreIdx=%d \n", mediaCtx->decOP.bitstreamFormat, mediaCtx->decOP.bitstreamMode, mediaCtx->decOP.coreIdx);
         va = VA_STATUS_ERROR_OPERATION_FAILED;
         return va;
     }
-    VPU_DecGiveCommand(mediaCtx->decHandle, DEC_SET_WTL_FRAME_FORMAT, &mediaCtx->wtlFormat);
+    retCode = VPU_DecGiveCommand(mediaCtx->decHandle, DEC_SET_WTL_FRAME_FORMAT, &mediaCtx->wtlFormat);
+    if (retCode != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] %s Failed to DEC_SET_WTL_FRAME_FORMAT command retCode=0x%x\n", __FUNCTION__, retCode);
+        va = VA_STATUS_ERROR_OPERATION_FAILED;
+        return va;
+    }
 
     DdiMediaUtil_LockMutex(&mediaCtx->DecoderMutex);
     contextHeapElement = DdiMediaUtil_AllocPVAContextFromHeap(mediaCtx->pDecoderCtxHeap);
@@ -1701,8 +1709,10 @@ static void VpuApiDecClose(
     uint32_t decIndex = (uint32_t)context & DDI_MEDIA_MASK_VACONTEXTID;
 
     for (int32_t index = 0; index < VPUAPI_MAX_FB_NUM; index++) {
-        if (mediaCtx->frameBufMem[index].phys_addr != 0)
+        if (mediaCtx->frameBufMem[index].phys_addr != 0) {
             vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->frameBufMem[index], DEC_FBC, 0);
+            printf("[CNM_VPUAPI] %s Free FBC buffers index=%d, addr=0x%x\n", __FUNCTION__, index,mediaCtx->frameBufMem[index].phys_addr);
+        }
     }
 
     if (mediaCtx->paramBuf.phys_addr != 0)
@@ -1743,8 +1753,21 @@ static VAStatus VpuApiDecSeqInit(
     BOOL seqInited = FALSE;
     Int32 intrFlag = 0;
 
-    if (mediaCtx->seqInited == TRUE)
+    if (mediaCtx->numOfSlice == 0 || mediaCtx->paramSize == 0 || mediaCtx->bsSize == 0) {
+        printf("[CNM_VPUAPI] FAIL VpuApiDecSeqInit \n");
+        printf("    >>> invalid vaapi parameter numOfSlice=%d, paramSize=%d, bsSize=%d \n", mediaCtx->numOfSlice, mediaCtx->paramSize, mediaCtx->bsSize);
+        return VA_STATUS_ERROR_INVALID_PARAMETER; 
+    }
+    if (mediaCtx->seqInited == TRUE) {
+        if (mediaCtx->pictureBitDepth == 8) {
+            if (mediaCtx->wtlFormat >= FORMAT_420_P10_16BIT_MSB) {
+                printf("[CNM_VPUAPI] FAIL VpuApiDecSeqInit \n");
+                printf("    >>> decoder can't re-format from 8bit to 10bit(upscaling)\n");
+                return VA_STATUS_ERROR_INVALID_SURFACE;
+            }
+        }
         return VA_STATUS_SUCCESS;
+    }
 
     printf("[CNM_VPUAPI] %s Update BsBuf Info baseAddr=0x%x, bsSize=%d\n", __FUNCTION__, mediaCtx->bsBuf.phys_addr, mediaCtx->bsSize);
     VPU_DecSetRdPtr(hdl, mediaCtx->bsBuf.phys_addr, TRUE);
@@ -1784,7 +1807,15 @@ static VAStatus VpuApiDecSeqInit(
     }
 
     mediaCtx->seqInited = seqInited;
+    mediaCtx->pictureBitDepth = seqInfo.lumaBitdepth;
 
+    if (mediaCtx->pictureBitDepth == 8) {
+        if (mediaCtx->wtlFormat >= FORMAT_420_P10_16BIT_MSB) {
+            printf("[CNM_VPUAPI] FAIL VpuApiDecSeqInit \n");
+            printf(" >>> decoder can't re-format from 8bit to 10bit(upscaling)\n");
+            return VA_STATUS_ERROR_INVALID_SURFACE;
+        }
+    }
     printf("[CNM_VPUAPI] SUCCESS VpuApiDecSeqInit\n");
     printf("[CNM_VPUAPI] >>> width : %d | height : %d\n", seqInfo.picWidth, seqInfo.picHeight);
     printf("[CNM_VPUAPI] >>> crop left : %d | top : %d | right : %d | bottom : %d\n", seqInfo.picCropRect.left, seqInfo.picCropRect.top, seqInfo.picCropRect.right, seqInfo.picCropRect.bottom);
@@ -1809,6 +1840,11 @@ static VAStatus VpuApiDecPic(
     DecOutputInfo outputInfo;
     Int32 intrFlag = 0;
 
+    if (mediaCtx->numOfSlice == 0 || mediaCtx->paramSize == 0 || mediaCtx->bsSize == 0) {
+        printf("[CNM_VPUAPI] FAIL VpuApiDecPic \n");
+        printf("    >>> invalid vaapi parameter numOfSlice=%d, paramSize=%d, bsSize=%d \n", mediaCtx->numOfSlice, mediaCtx->paramSize, mediaCtx->bsSize);
+        return VA_STATUS_ERROR_INVALID_PARAMETER; 
+    }
     osal_memset(&param,      0x00, sizeof(DecParam));
     osal_memset(&outputInfo, 0x00, sizeof(DecOutputInfo));
 
@@ -4797,7 +4833,7 @@ VAStatus DdiMedia_QueryConfigEntrypoints(
             status = VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
         }
     }
-    printf("[CNM_DEBUG]-%s profile=0x%x, status=0x%x, num_entrypoints=%d\n", __FUNCTION__, profile, status, *num_entrypoints);
+    // printf("[CNM_DEBUG]-%s profile=0x%x, status=0x%x, num_entrypoints=%d\n", __FUNCTION__, profile, status, *num_entrypoints);
     return status;
 #else
     DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
@@ -4845,7 +4881,7 @@ VAStatus DdiMedia_QueryConfigProfiles (
         status = VA_STATUS_SUCCESS;
     }
 
-    printf("[CNM_DEBUG]-%s num_profiles=%d\n", __FUNCTION__, *num_profiles);
+    // printf("[CNM_DEBUG]-%s num_profiles=%d\n", __FUNCTION__, *num_profiles);
     return status;
 #else
     DDI_CHK_NULL(mediaCtx->m_caps, "nullptr m_caps", VA_STATUS_ERROR_INVALID_CONTEXT);
@@ -4949,11 +4985,11 @@ VAStatus DdiMedia_CreateConfig (
                 if (s_vpuApiAttrs[i].actual_entrypoint == entrypoint) {
                     find_entrypoint = true;
                     bool is_valid_attr = false;
-                    printf("[CNM_DEBUG]  %s idx=%d, profile actual_profile=0x%x, actual_entrypoint=0x%x \n", __FUNCTION__, i, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
+                    // printf("[CNM_DEBUG]  %s idx=%d, profile actual_profile=0x%x, actual_entrypoint=0x%x \n", __FUNCTION__, i, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
                     for (j=0; j < num_attribs; j++) {
-                        printf("[CNM_DEBUG]  %s try find_valid_attr jdx=%d, type=0x%x, value=0x%x, type_list=0x%x, value_list=0x%x \n", __FUNCTION__, j, s_vpuApiAttrs[i].attrType, s_vpuApiAttrs[i].value, attrib_list[j].type, attrib_list[j].value);
+                        // printf("[CNM_DEBUG]  %s try find_valid_attr jdx=%d, type=0x%x, value=0x%x, type_list=0x%x, value_list=0x%x \n", __FUNCTION__, j, s_vpuApiAttrs[i].attrType, s_vpuApiAttrs[i].value, attrib_list[j].type, attrib_list[j].value);
                         if (attrib_list[j].type == s_vpuApiAttrs[i].attrType) {
-                            printf("[CNM_DEBUG]  %s found_valid_attr jdx=%d, type=0x%x, value=0x%x, type_list=0x%x, value_list=0x%x \n", __FUNCTION__, j, s_vpuApiAttrs[i].attrType, s_vpuApiAttrs[i].value, attrib_list[j].type, attrib_list[j].value);
+                            // printf("[CNM_DEBUG]  %s found_valid_attr jdx=%d, type=0x%x, value=0x%x, type_list=0x%x, value_list=0x%x \n", __FUNCTION__, j, s_vpuApiAttrs[i].attrType, s_vpuApiAttrs[i].value, attrib_list[j].type, attrib_list[j].value);
    
                             if (attrib_list[j].value == 0 /* Define for empty attrib */) {
                                 is_valid_attr = true;
@@ -5031,10 +5067,10 @@ VAStatus DdiMedia_CreateConfig (
                     }
 
                     if (is_valid_attr == false) {
-                        printf("[CNM_DEBUG]%s can't find valid attribute\n", __FUNCTION__);
+                        // printf("[CNM_DEBUG]%s can't find valid attribute\n", __FUNCTION__);
                     }
                     else {
-                        printf("[CNM_DEBUG]%s can find valid attribute config_id=0x%x, profile=0x%x, entrypoint=0x%x\n", __FUNCTION__, s_vpuApiAttrs[i].configId, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
+                        // printf("[CNM_DEBUG]%s can find valid attribute config_id=0x%x, profile=0x%x, entrypoint=0x%x\n", __FUNCTION__, s_vpuApiAttrs[i].configId, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
                         found_config_id = s_vpuApiAttrs[i].configId;
                         if (s_vpuApiAttrs[i].actual_entrypoint == VAEntrypointEncSlice || s_vpuApiAttrs[i].actual_entrypoint == VAEntrypointEncSliceLP) {
                             if (attrib_list[j].type == VAConfigAttribRateControl) {
@@ -5066,7 +5102,7 @@ VAStatus DdiMedia_CreateConfig (
             else {
                 *config_id = found_config_id;
                 if (*config_id == 0xffffffff) {
-                    printf("[CNM_DEBUG]-%s configid=0x%x, status=0x%x VA_STATUS_ERROR_INVALID_VALUE\n", __FUNCTION__, *config_id, VA_STATUS_ERROR_INVALID_VALUE);
+                    // printf("[CNM_DEBUG]-%s configid=0x%x, status=0x%x VA_STATUS_ERROR_INVALID_VALUE\n", __FUNCTION__, *config_id, VA_STATUS_ERROR_INVALID_VALUE);
                     status = VA_STATUS_ERROR_INVALID_VALUE;
                 }
                 else {
@@ -5075,7 +5111,7 @@ VAStatus DdiMedia_CreateConfig (
             }
         }
     }
-    printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, status=0x%x, config_id=0x%x\n", __FUNCTION__, profile, entrypoint, status, *config_id);
+    // printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, status=0x%x, config_id=0x%x\n", __FUNCTION__, profile, entrypoint, status, *config_id);
 
     if (*config_id >= VPUAPI_ENCODER_CONFIG_ID_START &&
         *config_id < VPUAPI_MAX_CONFIG_ID) {
@@ -5094,7 +5130,7 @@ VAStatus DdiMedia_CreateConfig (
     VAStatus status;
     status = mediaCtx->m_caps->CreateConfig(
             profile, entrypoint, attrib_list, num_attribs, config_id);
-    printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, status=0x%x, config_id=0x%x\n", __FUNCTION__, profile, entrypoint, status, *config_id);
+    // printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, status=0x%x, config_id=0x%x\n", __FUNCTION__, profile, entrypoint, status, *config_id);
     return status;
            
 #endif
@@ -6945,10 +6981,16 @@ VAStatus DdiMedia_EndPicture (
 #ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
             vaStatus = VpuApiDecSeqInit(ctx);
+            if (vaStatus != VA_STATUS_SUCCESS) {
+                break;
+            }
             vaStatus = VpuApiDecPic(ctx);
             break;
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             vaStatus = VpuApiEncSeqInit(ctx);
+            if (vaStatus != VA_STATUS_SUCCESS) {
+                break;
+            }
             vaStatus = VpuApiEncPic(ctx);
             break;
         case DDI_MEDIA_CONTEXT_TYPE_VP:
