@@ -90,6 +90,8 @@ static int32_t atrace_switch            = 0;
 #ifdef CNM_VPUAPI_INTERFACE
 #define VPUAPI_MAX_FB_NUM         100
 #define VPUAPI_MAX_MISC_TYPE_NUM  20
+#define VPUAPI_MAX_BUF_NUM        5
+#define VPUAPI_UNKNOWN_SURFACE_ID 0xFFFF
 #endif
 #ifdef CNM_VPUAPI_INTERFACE_CAP
 #define VPUAPI_MAX_PIC_WIDTH      8192
@@ -586,15 +588,17 @@ struct DDI_MEDIA_CONTEXT
     vpu_buffer_t      sliceParamBuf;
     vpu_buffer_t      packedParamBuf;
     vpu_buffer_t      packedDataBuf;
-    vpu_buffer_t      paramBuf;
-    Uint32            paramSize;
-    vpu_buffer_t      bsBuf;
-    Uint32            bsSize;
+    vpu_buffer_t      paramBuf[VPUAPI_MAX_BUF_NUM];
+    uint32_t          paramSize;
+    vpu_buffer_t      bsBuf[VPUAPI_MAX_BUF_NUM];
+    uint32_t          bsSize;
+    uint32_t          bufIdx;
     uint32_t          numOfSlice;
     uint32_t          linearStride;
     uint32_t          linearHeight;
     bool              cbcrInterleave;
     bool              nv21;
+    VASurfaceID       usedRenderTargets[VPUAPI_MAX_FB_NUM];
     VASurfaceID       renderTarget;
     VASurfaceID       reconTarget;
     int32_t           numOfRenderTargets;
