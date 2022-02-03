@@ -609,6 +609,7 @@ struct DDI_MEDIA_CONTEXT
     vpu_buffer_t      fbcCOffsetBufMem[VPUAPI_MAX_FB_NUM];
     vpu_buffer_t      mvColBufMem[VPUAPI_MAX_FB_NUM];
     vpu_buffer_t      subSampledBufMem[VPUAPI_MAX_FB_NUM];
+    vpu_buffer_t      roiBufMem[VPUAPI_MAX_FB_NUM];
 #ifdef CNM_FPGA_PLATFORM
     vpu_buffer_t      linearFrameBufMem[VPUAPI_MAX_FB_NUM];
     FrameBuffer       linearFrameBuf[VPUAPI_MAX_FB_NUM];

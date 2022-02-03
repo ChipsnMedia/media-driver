@@ -300,7 +300,7 @@ static int vpuApiCapInitEncAttributes(VAProfile profile, VAEntrypoint entrypoint
     {
         VAConfigAttribValEncROI roi_attrib = {0};
         roi_attrib.bits.num_roi_regions = 16;
-        roi_attrib.bits.roi_rc_priority_support = 0;
+        roi_attrib.bits.roi_rc_priority_support = 1;
         roi_attrib.bits.roi_rc_qp_delta_support = 1;
         attrMap->value = roi_attrib.value;
     }
@@ -2178,6 +2178,17 @@ static void AllocateEncInternalBuffer(
         if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_SUBSAMBUF, 0) < 0)
             printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory subSampledBuf\n");
     }
+
+    if (mediaCtx->miscParamEnable&(1<<VAEncMiscParameterTypeROI)) {
+        pVb = &mediaCtx->roiBufMem[index];
+        if (pVb->phys_addr == 0) {
+            fbSize    = (mediaCtx->encOP.bitstreamFormat == STD_AVC) ? MAX_MB_NUM : MAX_CTU_NUM*4;
+            pVb->size = ((fbSize+4095)&~4095)+4096;
+
+            if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_ETC, 0) < 0)
+                printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory roiBufMem\n");
+        }
+    }
 }
 
 static void FreeEncInternalBuffer(
@@ -2193,6 +2204,88 @@ static void FreeEncInternalBuffer(
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->mvColBufMem[index], ENC_MV, 0);
     if (mediaCtx->subSampledBufMem[index].phys_addr != 0)
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->subSampledBufMem[index], ENC_SUBSAMBUF, 0);
+    if (mediaCtx->roiBufMem[index].phys_addr != 0)
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->roiBufMem[index], ENC_ETC, 0);
+}
+
+static int8_t ConvertPriorityToQpValue(int8_t priority)
+{
+    int8_t max_qp = 12;
+    int8_t min_qp = -12;
+    int8_t qp     = priority * 4;
+
+    if (qp < min_qp)
+        return min_qp;
+    else if (qp > max_qp)
+        return max_qp;
+    else
+        return qp;
+}
+
+static void UpdateEncROIBuffer(
+    PDDI_MEDIA_CONTEXT mediaCtx,
+    int32_t            index
+)
+{
+    VAEncMiscParameterBufferROI* vaEncMiscParamROI;
+    uint8_t* miscParamBufData;
+    uint32_t ctuSize;
+    uint32_t mapWidth, mapHeight, mapSize;
+    int8_t   roiIndex;
+    uint8_t  mapQp[MAX_MB_NUM];
+    vpu_buffer_t pVb = mediaCtx->miscParamBuf[VAEncMiscParameterTypeROI];
+
+    osal_memset(mapQp, 0x00, MAX_MB_NUM);
+
+    miscParamBufData = (uint8_t*)osal_malloc(pVb.size);
+
+    vdi_read_memory(mediaCtx->coreIdx, pVb.phys_addr, miscParamBufData, pVb.size, VDI_LITTLE_ENDIAN);
+
+    vaEncMiscParamROI = (VAEncMiscParameterBufferROI*)miscParamBufData;
+
+    if (mediaCtx->encOP.bitstreamFormat == STD_AVC) {
+        ctuSize   = 16;
+        mapWidth  = VPU_ALIGN32(VPU_ALIGN16(mediaCtx->encOP.picWidth)/ctuSize);
+        mapHeight = VPU_ALIGN16(mediaCtx->encOP.picHeight)/ctuSize;
+        mapSize   = mapWidth*mapHeight;
+    } else {
+        ctuSize   = 64;
+        mapWidth  = VPU_ALIGN8(VPU_ALIGN64(mediaCtx->encOP.picWidth)/ctuSize)*4;
+        mapHeight = VPU_ALIGN64(mediaCtx->encOP.picHeight)/ctuSize;
+        mapSize   = mapWidth*mapHeight;
+    }
+
+    for (roiIndex = vaEncMiscParamROI->num_roi-1; roiIndex >= 0; roiIndex--) {
+        VAEncROI roi = vaEncMiscParamROI->roi[roiIndex];
+        uint32_t roiX, roiY;
+        uint32_t roiWidth, roiHeight;
+
+        if (mediaCtx->encOP.bitstreamFormat == STD_AVC) {
+            roiX      = roi.roi_rectangle.x/ctuSize;
+            roiY      = roi.roi_rectangle.y/ctuSize;
+            roiWidth  = (roi.roi_rectangle.width + ctuSize - 1)/ctuSize;
+            roiHeight = (roi.roi_rectangle.height + ctuSize - 1)/ctuSize;
+        } else {
+            roiX      = (roi.roi_rectangle.x/ctuSize)*4;
+            roiY      = roi.roi_rectangle.y/ctuSize;
+            roiWidth  = ((roi.roi_rectangle.width + ctuSize - 1)/ctuSize)*4;
+            roiHeight = (roi.roi_rectangle.height + ctuSize - 1)/ctuSize;
+        }
+
+        for (uint8_t y = roiY; y <= roiHeight + roiY; y++) {
+            for (uint8_t x = roiX; x <= roiWidth + roiX; x++) {
+                if (vaEncMiscParamROI->roi_flags.bits.roi_value_is_qp_delta) {
+                    mapQp[y*mapWidth+x] = roi.roi_value;
+                } else { // roi_value is priority.
+                    mapQp[y*mapWidth+x] = ConvertPriorityToQpValue(roi.roi_value);
+                }
+            }
+        }
+    }
+
+    vdi_write_memory(mediaCtx->coreIdx, mediaCtx->roiBufMem[index].phys_addr, mapQp, mapSize, VDI_128BIT_BIG_ENDIAN);
+
+    osal_free(miscParamBufData);
 }
 
 static VAStatus AllocateEncFrameBuffer(
@@ -2874,6 +2967,12 @@ static VAStatus VpuApiEncPic(
     printf("[CNM_VPUAPI] srcBufY: 0x%x\n", param.sourceFrame->bufY);
     printf("[CNM_VPUAPI] srcBufCb: 0x%x\n", param.sourceFrame->bufCb);
     printf("[CNM_VPUAPI] srcBufCr: 0x%x\n", param.sourceFrame->bufCr);
+
+    if (mediaCtx->miscParamEnable&(1<<VAEncMiscParameterTypeROI)) {
+        UpdateEncROIBuffer(mediaCtx, reconTargetIdx);
+        param.customMapOpt.customRoiMapEnable = TRUE;
+        param.customMapOpt.addrCustomMap      = mediaCtx->roiBufMem[reconTargetIdx].phys_addr;
+    }
 
     if ((ret=VPU_EncStartOneFrame(hdl, &param)) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] FAIL VPU_EncStartOneFrame: 0x%x\n", ret);
