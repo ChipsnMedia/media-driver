@@ -596,6 +596,9 @@ struct DDI_MEDIA_CONTEXT
     uint32_t          numOfSlice;
     uint32_t          linearStride;
     uint32_t          linearHeight;
+    uint32_t          encSrcWidth;
+    uint32_t          encSrcHeight;
+    bool              cbcrOrder;
     bool              cbcrInterleave;
     bool              nv21;
     VASurfaceID       usedRenderTargets[VPUAPI_MAX_FB_NUM];
