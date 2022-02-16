@@ -622,7 +622,6 @@ struct DDI_MEDIA_CONTEXT
 #endif
     int32_t           pictureWidth;
     int32_t           pictureHeight;
-    int32_t           pictureBitDepth;
     bool              seqInited;
     int32_t           decIdx;
     int32_t           encIdx;

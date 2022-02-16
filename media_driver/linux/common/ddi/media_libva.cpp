@@ -631,158 +631,29 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
     // else if (entrypoint == VAEntrypointVLD)    /* vld */
     if (entrypoint == VAEntrypointVLD)    /* vld */
     {
-        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2 || profile == VAProfileAV1Profile0 || profile == VAProfileAV1Profile1)
-        {
+        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2) {
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
             attribs[i].value.value.i = VA_FOURCC_P010;
             i++;
-
-            // if(profile == VAProfileVP9Profile2)
-            // {
-            //     attribs[i].type = VASurfaceAttribPixelFormat;
-            //     attribs[i].value.type = VAGenericValueTypeInteger;
-            //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-            //     attribs[i].value.value.i = VA_FOURCC_P012;
-            //     i++;
-
-            //     attribs[i].type = VASurfaceAttribPixelFormat;
-            //     attribs[i].value.type = VAGenericValueTypeInteger;
-            //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-            //     attribs[i].value.value.i = VA_FOURCC_P016;
-            //     i++;
-            // }
-        }
-        // else if(profile == VAProfileHEVCMain12)
-        // {
-        //     attribs[i].type = VASurfaceAttribPixelFormat;
-        //     attribs[i].value.type = VAGenericValueTypeInteger;
-        //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-        //     attribs[i].value.value.i = VA_FOURCC_P012;
-        //     i++;
-
-        //     attribs[i].type = VASurfaceAttribPixelFormat;
-        //     attribs[i].value.type = VAGenericValueTypeInteger;
-        //     attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-        //     attribs[i].value.value.i = VA_FOURCC_P016;
-        //     i++;
-        // }
-//         else if(profile == VAProfileHEVCMain422_10)
-//         {
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_YUY2;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y210;
-//             i++;
-//         }
-//         else if(profile == VAProfileHEVCMain422_12)
-//         {
-//             //hevc  rext: Y216 12/16bit 422
-// #if VA_CHECK_VERSION(1, 9, 0)
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y212;
-//             i++;
-// #endif
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y216;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_P012;
-//             i++;
-//         }
-//         else if(profile == VAProfileHEVCMain444 || profile == VAProfileVP9Profile1)
-//         {
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_AYUV;
-//             i++;
-//         }
-//         else if(profile == VAProfileHEVCMain444_10 || profile == VAProfileVP9Profile3)
-//         {
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y410;
-//             i++;
-
-//             if(profile == VAProfileVP9Profile3)
-//             {
-// #if VA_CHECK_VERSION(1, 9, 0)
-//                 attribs[i].type = VASurfaceAttribPixelFormat;
-//                 attribs[i].value.type = VAGenericValueTypeInteger;
-//                 attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//                 attribs[i].value.value.i = VA_FOURCC_Y412;
-//                 i++;
-// #endif
-
-//                 attribs[i].type = VASurfaceAttribPixelFormat;
-//                 attribs[i].value.type = VAGenericValueTypeInteger;
-//                 attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//                 attribs[i].value.value.i = VA_FOURCC_Y416;
-//                 i++;
-//             }
-//         }
-//         else if(profile == VAProfileHEVCMain444_12)
-//         {
-// #if VA_CHECK_VERSION(1, 9, 0)
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y412;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y212;
-//             i++;
-// #endif
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_Y416;
-//             i++;
-
-//             attribs[i].type = VASurfaceAttribPixelFormat;
-//             attribs[i].value.type = VAGenericValueTypeInteger;
-//             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//             attribs[i].value.value.i = VA_FOURCC_P012;
-//             i++;
-//         }
-//         else if (profile == VAProfileJPEGBaseline)
-//         {
-//             for (uint32_t j = 0; j < m_numJpegSurfaceAttr; j++)
-//             {
-//                 attribs[i].type = VASurfaceAttribPixelFormat;
-//                 attribs[i].value.type = VAGenericValueTypeInteger;
-//                 attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-//                 attribs[i].value.value.i = m_jpegSurfaceAttr[j];
-//                 i++;
-//             }
-//         }
-        else
-        {
+        } else if (profile == VAProfileAV1Profile0 || profile == VAProfileAV1Profile1) {
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-            attribs[i].value.value.i = VA_FOURCC('N', 'V', '1', '2');
+            attribs[i].value.value.i = VA_FOURCC_NV12;
+            i++;
+
+            attribs[i].type = VASurfaceAttribPixelFormat;
+            attribs[i].value.type = VAGenericValueTypeInteger;
+            attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+            attribs[i].value.value.i = VA_FOURCC_P010;
+            i++;
+        } else {
+            attribs[i].type = VASurfaceAttribPixelFormat;
+            attribs[i].value.type = VAGenericValueTypeInteger;
+            attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+            attribs[i].value.value.i = VA_FOURCC_NV12;
             i++;
         }
 
@@ -1600,43 +1471,85 @@ static VAStatus VpuApiDecCreateBuffer(
         return va;
     }
 
-    switch ((int32_t)type) {
-    case VASliceParameterBufferType:
-        mediaCtx->numOfSlice++;
-    case VAPictureParameterBufferType:
-    case VAIQMatrixBufferType:
-    case VASubsetsParameterBufferType:
-        {
-            void *convData = NULL;
-            vpu_buffer_t buf = mediaCtx->paramBuf[mediaCtx->bufIdx];
-            convData = ConvertBufferData(mediaCtx, type, size, (uint8_t*)data);
-            if (convData) {
-                if (buf.size < mediaCtx->paramSize + VPU_ALIGN16(size)) {
-                    printf("[CNM_VPUAPI] Internal paramBuf overflow. (internal:0x%x < input:0x%x)\n", buf.size, mediaCtx->paramSize + VPU_ALIGN16(size));
-                    va = VA_STATUS_ERROR_OPERATION_FAILED;
+    return va;
+}
+
+static VAStatus VpuApiDecRenderPicture(
+    VADriverContextP  ctx,
+    VABufferID       *buffers,
+    int32_t           numBuffers
+)
+{
+    PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
+    VAStatus va = VA_STATUS_SUCCESS;
+    void *data = nullptr;
+
+    if (!buffers) {
+        va = VA_STATUS_ERROR_INVALID_BUFFER;
+        return va;
+    }
+
+    for (int32_t idx = 0; idx < numBuffers; idx++) {
+        if (buffers[idx] == VA_INVALID_ID) {
+            va = VA_STATUS_ERROR_INVALID_BUFFER;
+            return va;
+        }
+
+        DDI_MEDIA_BUFFER *buf = DdiMedia_GetBufferFromVABufferID(mediaCtx, buffers[idx]);
+        if (buf == nullptr) {
+            va = VA_STATUS_ERROR_INVALID_BUFFER;
+            return va;
+        }
+
+        VABufferType type = (VABufferType)buf->uiType;
+        uint32_t size = buf->iSize;
+
+        DdiMedia_MapBuffer(ctx, buffers[idx], &data);
+        if (data == nullptr) {
+            va = VA_STATUS_ERROR_INVALID_BUFFER;
+            return va;
+        }
+
+        switch ((int32_t)type) {
+        case VASliceParameterBufferType:
+            mediaCtx->numOfSlice++;
+        case VAPictureParameterBufferType:
+        case VAIQMatrixBufferType:
+        case VASubsetsParameterBufferType:
+            {
+                void *convData = NULL;
+                vpu_buffer_t paramBuf = mediaCtx->paramBuf[mediaCtx->bufIdx];
+                convData = ConvertBufferData(mediaCtx, type, size, (uint8_t*)data);
+                if (convData) {
+                    if (paramBuf.size < mediaCtx->paramSize + VPU_ALIGN16(size)) {
+                        printf("[CNM_VPUAPI] Internal paramBuf overflow. (internal:0x%x < input:0x%x)\n", paramBuf.size, mediaCtx->paramSize + VPU_ALIGN16(size));
+                        va = VA_STATUS_ERROR_OPERATION_FAILED;
+                        free(convData);
+                        return va;
+                    }
+
+                    vdi_write_memory(mediaCtx->coreIdx, paramBuf.phys_addr + mediaCtx->paramSize, (Uint8*)convData, VPU_ALIGN16(size), VDI_LITTLE_ENDIAN);
+                    mediaCtx->paramSize += VPU_ALIGN16(size);
                     free(convData);
+                }
+            }
+            break;
+        case VASliceDataBufferType:
+            {
+                vpu_buffer_t bsBuf = mediaCtx->bsBuf[mediaCtx->bufIdx];
+                if (bsBuf.size < mediaCtx->bsSize + size) {
+                    printf("[CNM_VPUAPI] Internal bsBuf overflow. (internal:0x%x < input:0x%x)\n", bsBuf.size, mediaCtx->bsSize + size);
+                    va = VA_STATUS_ERROR_OPERATION_FAILED;
                     return va;
                 }
 
-                vdi_write_memory(mediaCtx->coreIdx, buf.phys_addr + mediaCtx->paramSize, (Uint8*)convData, VPU_ALIGN16(size), VDI_LITTLE_ENDIAN);
-                mediaCtx->paramSize += VPU_ALIGN16(size);
-                free(convData);
+                vdi_write_memory(mediaCtx->coreIdx, bsBuf.phys_addr + mediaCtx->bsSize, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
+                mediaCtx->bsSize += size;
+                break;
             }
         }
-        break;
-    case VASliceDataBufferType:
-        {
-            vpu_buffer_t buf = mediaCtx->bsBuf[mediaCtx->bufIdx];
-            if (buf.size < mediaCtx->bsSize + size) {
-                printf("[CNM_VPUAPI] Internal bsBuf overflow. (internal:0x%x < input:0x%x)\n", buf.size, mediaCtx->bsSize + size);
-                va = VA_STATUS_ERROR_OPERATION_FAILED;
-                return va;
-            }
 
-            vdi_write_memory(mediaCtx->coreIdx, buf.phys_addr + mediaCtx->bsSize, (Uint8*)data, size, VDI_LITTLE_ENDIAN);
-            mediaCtx->bsSize += size;
-            break;
-        }
+        DdiMedia_UnmapBuffer(ctx, buffers[idx]);
     }
 
     return va;
@@ -1777,6 +1690,21 @@ static VAStatus VpuApiDecOpen(
     return va;
 }
 
+static VAStatus VpuApiDecCheckValidity(
+    VADriverContextP ctx
+)
+{
+    PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
+
+    if (mediaCtx->numOfSlice == 0 || mediaCtx->paramSize == 0 || mediaCtx->bsSize == 0) {
+        printf("[CNM_VPUAPI] FAIL VpuApiDecCheckValidity \n");
+        printf("    >>> invalid vaapi parameter numOfSlice=%d, paramSize=%d, bsSize=%d \n", mediaCtx->numOfSlice, mediaCtx->paramSize, mediaCtx->bsSize);
+        return VA_STATUS_ERROR_INVALID_PARAMETER;
+    }
+
+    return VA_STATUS_SUCCESS;
+}
+
 static VAStatus VpuApiDecSeqInit(
     VADriverContextP ctx
 )
@@ -1788,19 +1716,7 @@ static VAStatus VpuApiDecSeqInit(
     BOOL seqInited = FALSE;
     Int32 intrFlag = 0;
 
-    if (mediaCtx->numOfSlice == 0 || mediaCtx->paramSize == 0 || mediaCtx->bsSize == 0) {
-        printf("[CNM_VPUAPI] FAIL VpuApiDecSeqInit \n");
-        printf("    >>> invalid vaapi parameter numOfSlice=%d, paramSize=%d, bsSize=%d \n", mediaCtx->numOfSlice, mediaCtx->paramSize, mediaCtx->bsSize);
-        return VA_STATUS_ERROR_INVALID_PARAMETER; 
-    }
     if (mediaCtx->seqInited == TRUE) {
-        if (mediaCtx->pictureBitDepth == 8) {
-            if (mediaCtx->wtlFormat >= FORMAT_420_P10_16BIT_MSB) {
-                printf("[CNM_VPUAPI] FAIL VpuApiDecSeqInit \n");
-                printf("    >>> decoder can't re-format from 8bit to 10bit(upscaling)\n");
-                return VA_STATUS_ERROR_INVALID_SURFACE;
-            }
-        }
         return VA_STATUS_SUCCESS;
     }
 
@@ -1841,15 +1757,7 @@ static VAStatus VpuApiDecSeqInit(
     }
 
     mediaCtx->seqInited = seqInited;
-    mediaCtx->pictureBitDepth = seqInfo.lumaBitdepth;
 
-    if (mediaCtx->pictureBitDepth == 8) {
-        if (mediaCtx->wtlFormat >= FORMAT_420_P10_16BIT_MSB) {
-            printf("[CNM_VPUAPI] FAIL VpuApiDecSeqInit \n");
-            printf(" >>> decoder can't re-format from 8bit to 10bit(upscaling)\n");
-            return VA_STATUS_ERROR_INVALID_SURFACE;
-        }
-    }
     printf("[CNM_VPUAPI] SUCCESS VpuApiDecSeqInit\n");
     printf("[CNM_VPUAPI] >>> width : %d | height : %d\n", seqInfo.picWidth, seqInfo.picHeight);
     printf("[CNM_VPUAPI] >>> crop left : %d | top : %d | right : %d | bottom : %d\n", seqInfo.picCropRect.left, seqInfo.picCropRect.top, seqInfo.picCropRect.right, seqInfo.picCropRect.bottom);
@@ -1904,6 +1812,10 @@ static VAStatus VpuApiDecGetResult(
         printf("[CNM_VPUAPI] FAIL VPU_DecGetOutputInfo: 0x%x, errorReason: 0x%x\n", ret, outputInfo.errorReason);
         vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
         return VA_STATUS_ERROR_UNIMPLEMENTED;
+    }
+
+    if (outputInfo.decodingSuccess == 0) {
+        printf("[CNM_VPUAPI] Decoding Fail: %d, Warning Info: %d\n", outputInfo.decodingSuccess, outputInfo.warnInfo);
     }
 
     if (outputInfo.indexFrameDecoded < 0) {
@@ -2021,12 +1933,6 @@ static VAStatus VpuApiDecPic(
     DecParam param;
 
     osal_memset(&param, 0x00, sizeof(DecParam));
-
-    if (mediaCtx->numOfSlice == 0 || mediaCtx->paramSize == 0 || mediaCtx->bsSize == 0) {
-        printf("[CNM_VPUAPI] FAIL VpuApiDecPic \n");
-        printf("    >>> invalid vaapi parameter numOfSlice=%d, paramSize=%d, bsSize=%d \n", mediaCtx->numOfSlice, mediaCtx->paramSize, mediaCtx->bsSize);
-        return VA_STATUS_ERROR_INVALID_PARAMETER;
-    }
 
     VPU_DecGiveCommand(hdl, DEC_GET_QUEUE_STATUS, &qStatus);
 
@@ -7177,7 +7083,7 @@ VAStatus DdiMedia_RenderPicture (
     {
 #ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
-            return VA_STATUS_SUCCESS;
+            return VpuApiDecRenderPicture(ctx, buffers, num_buffers);
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             return VA_STATUS_SUCCESS;
         case DDI_MEDIA_CONTEXT_TYPE_VP:
@@ -7225,6 +7131,10 @@ VAStatus DdiMedia_EndPicture (
     {
 #ifdef CNM_VPUAPI_INTERFACE
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
+            vaStatus = VpuApiDecCheckValidity(ctx);
+            if (vaStatus != VA_STATUS_SUCCESS) {
+                break;
+            }
             vaStatus = VpuApiDecSeqInit(ctx);
             if (vaStatus != VA_STATUS_SUCCESS) {
                 break;
