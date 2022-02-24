@@ -564,6 +564,7 @@ struct DDI_MEDIA_CONTEXT
 #endif
     bool m_apoMosEnabled;
 #ifdef CNM_VPUAPI_INTERFACE
+    MEDIA_MUTEX_T     vpuapiMutex;
     DecHandle         decHandle;
     EncHandle         encHandle;
     DecOpenParam      decOP;

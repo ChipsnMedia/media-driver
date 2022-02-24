@@ -912,7 +912,7 @@ static VASurfaceID GetUsedRenderTarget(
     VASurfaceID usedRenderTarget;
     int32_t i;
 
-    vdi_vaapi_driver_lock(mediaCtx->coreIdx);
+    DdiMediaUtil_LockMutex(&mediaCtx->vpuapiMutex);
 
     usedRenderTarget = mediaCtx->usedRenderTargets[0];
 
@@ -920,7 +920,7 @@ static VASurfaceID GetUsedRenderTarget(
         mediaCtx->usedRenderTargets[i] = mediaCtx->usedRenderTargets[i+1];
     mediaCtx->usedRenderTargets[i] = VPUAPI_UNKNOWN_SURFACE_ID;
 
-    vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+    DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
 
     return usedRenderTarget;
 }
@@ -932,7 +932,7 @@ static BOOL FindUsedRenderTarget(
 {
     BOOL found = FALSE;
 
-    vdi_vaapi_driver_lock(mediaCtx->coreIdx);
+    DdiMediaUtil_LockMutex(&mediaCtx->vpuapiMutex);
 
     for (int32_t i = 0; i < VPUAPI_MAX_FB_NUM; i++) {
         if (mediaCtx->usedRenderTargets[i] == renderTarget) {
@@ -941,7 +941,7 @@ static BOOL FindUsedRenderTarget(
         }
     }
 
-    vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+    DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
 
     return found;
 }
@@ -951,7 +951,7 @@ static void SetUsedRenderTarget(
     VASurfaceID        renderTarget
 )
 {
-    vdi_vaapi_driver_lock(mediaCtx->coreIdx);
+    DdiMediaUtil_LockMutex(&mediaCtx->vpuapiMutex);
 
     for (int32_t i = 0; i < VPUAPI_MAX_FB_NUM; i++) {
         if (mediaCtx->usedRenderTargets[i] == VPUAPI_UNKNOWN_SURFACE_ID) {
@@ -960,7 +960,7 @@ static void SetUsedRenderTarget(
         }
     }
 
-    vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+    DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
 }
 
 static void* ConvertBufferData(
@@ -1615,6 +1615,7 @@ static VAStatus VpuApiDecOpen(
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
+    DdiMediaUtil_InitMutex(&mediaCtx->vpuapiMutex);
     mediaCtx->pictureWidth          = pictureWidth;
     mediaCtx->pictureHeight         = pictureHeight;
     mediaCtx->decOP.bitstreamFormat = bitFormat;
@@ -1784,10 +1785,10 @@ static VAStatus VpuApiDecGetResult(
 
     osal_memset(&outputInfo, 0x00, sizeof(DecOutputInfo));
 
-    vdi_vaapi_driver_lock(mediaCtx->coreIdx);
+    DdiMediaUtil_LockMutex(&mediaCtx->vpuapiMutex);
 
     if (surfaceID == VPUAPI_UNKNOWN_SURFACE_ID) {
-        vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+        DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_SUCCESS;
     }
 
@@ -1795,7 +1796,7 @@ static VAStatus VpuApiDecGetResult(
     if (intrFlag == -1) {
         printf("[CNM_VPUAPI] FAIL VPU_WaitInterruptEx for VPU_DecStartOneFrame : timeout=%dms\n", VPU_DEC_TIMEOUT);
         VPU_DecGetOutputInfo(hdl, &outputInfo);
-        vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+        DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_TIMEDOUT;
     }
 
@@ -1804,13 +1805,13 @@ static VAStatus VpuApiDecGetResult(
     }
     else {
         printf("[CNM_VPUAPI] VPU_DecStartOneFrame is done. but intrFlag=0x%x is wrong\n", intrFlag);
-        vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+        DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_DECODING_ERROR;
     }
 
     if ((ret=VPU_DecGetOutputInfo(hdl, &outputInfo)) != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] FAIL VPU_DecGetOutputInfo: 0x%x, errorReason: 0x%x\n", ret, outputInfo.errorReason);
-        vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+        DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
@@ -1820,7 +1821,7 @@ static VAStatus VpuApiDecGetResult(
 
     if (outputInfo.indexFrameDecoded < 0) {
         printf("[CNM_VPUAPI] DECODE FAIL indexFrameDecoded %d indexFrameDisplay %d.\n", outputInfo.indexFrameDecoded, outputInfo.indexFrameDisplay);
-        vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+        DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
@@ -1917,7 +1918,7 @@ static VAStatus VpuApiDecGetResult(
     }
 #endif
 
-    vdi_vaapi_driver_unlock(mediaCtx->coreIdx);
+    DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
 
     return VA_STATUS_SUCCESS;
 }
@@ -1935,13 +1936,6 @@ static VAStatus VpuApiDecPic(
     osal_memset(&param, 0x00, sizeof(DecParam));
 
     VPU_DecGiveCommand(hdl, DEC_GET_QUEUE_STATUS, &qStatus);
-
-    if (qStatus.instanceQueueCount == COMMAND_QUEUE_DEPTH ||
-        qStatus.reportQueueCount == REPORT_QUEUE_COUNT) {
-        VAStatus vaStatus = VpuApiDecGetResult(ctx, GetUsedRenderTarget(mediaCtx));
-        if (vaStatus != VA_STATUS_SUCCESS)
-            return vaStatus;
-    }
 
     while (FindUsedRenderTarget(mediaCtx, mediaCtx->renderTarget)) {
         VAStatus vaStatus = VpuApiDecGetResult(ctx, GetUsedRenderTarget(mediaCtx));
@@ -1975,7 +1969,16 @@ static VAStatus VpuApiDecPic(
     printf("[CNM_VPUAPI] BufAddrCr: 0x%x\n", param.vaDecodeBufAddrCr);
 #endif
 
-    if ((ret=VPU_DecStartOneFrame(hdl, &param)) != RETCODE_SUCCESS) {
+    while ((ret=VPU_DecStartOneFrame(hdl, &param)) == RETCODE_QUEUEING_FAILURE) {
+        VAStatus vaStatus = VpuApiDecGetResult(ctx, GetUsedRenderTarget(mediaCtx));
+        if (vaStatus != VA_STATUS_SUCCESS)
+            return vaStatus;
+
+        VPU_DecSetRdPtr(hdl, mediaCtx->bsBuf[mediaCtx->bufIdx].phys_addr, TRUE);
+        VPU_DecUpdateBitstreamBuffer(hdl, mediaCtx->bsSize);
+    }
+
+    if (ret != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] FAIL VPU_DecStartOneFrame: 0x%x\n", ret);
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
@@ -2034,6 +2037,8 @@ static void VpuApiDecClose(
     }
 #endif
 #endif
+
+    DdiMediaUtil_DestroyMutex(&mediaCtx->vpuapiMutex);
 
     DdiMediaUtil_LockMutex(&mediaCtx->DecoderMutex);
     DdiMediaUtil_ReleasePVAContextFromHeap(mediaCtx->pDecoderCtxHeap, decIndex);
