@@ -1929,13 +1929,10 @@ static VAStatus VpuApiDecPic(
 {
     PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
     RetCode ret = RETCODE_SUCCESS;
-    QueueStatusInfo qStatus;
     DecHandle hdl = mediaCtx->decHandle;
     DecParam param;
 
     osal_memset(&param, 0x00, sizeof(DecParam));
-
-    VPU_DecGiveCommand(hdl, DEC_GET_QUEUE_STATUS, &qStatus);
 
     while (FindUsedRenderTarget(mediaCtx, mediaCtx->renderTarget)) {
         VAStatus vaStatus = VpuApiDecGetResult(ctx, GetUsedRenderTarget(mediaCtx));
@@ -2125,6 +2122,19 @@ static void FreeEncInternalBuffer(
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->roiBufMem[index], ENC_ETC, 0);
 }
 
+static int8_t ClipQpValue(int8_t qp)
+{
+    int8_t max_qp = 31;
+    int8_t min_qp = -32;
+
+    if (qp < min_qp)
+        return min_qp;
+    else if (qp > max_qp)
+        return max_qp;
+    else
+        return qp;
+}
+
 static int8_t ConvertPriorityToQpValue(int8_t priority)
 {
     int8_t max_qp = 12;
@@ -2192,7 +2202,7 @@ static void UpdateEncROIBuffer(
         for (uint8_t y = roiY; y <= roiHeight + roiY; y++) {
             for (uint8_t x = roiX; x <= roiWidth + roiX; x++) {
                 if (vaEncMiscParamROI->roi_flags.bits.roi_value_is_qp_delta) {
-                    mapQp[y*mapWidth+x] = roi.roi_value;
+                    mapQp[y*mapWidth+x] = ClipQpValue(roi.roi_value);
                 } else { // roi_value is priority.
                     mapQp[y*mapWidth+x] = ConvertPriorityToQpValue(roi.roi_value);
                 }
