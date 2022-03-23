@@ -1161,6 +1161,218 @@ static void FreeLinearFrameBuffer(
 }
 #endif
 
+
+static void VpuApiDecPrintDebugInfo(
+    VADriverContextP ctx
+)
+{
+
+typedef struct {
+    Uint32 priReason;
+    Uint32 regs[0x40];
+    Uint32 debugInfo0;
+    Uint32 debugInfo1;
+} VPUDebugInfo;
+typedef struct CodecInstRef {
+    Int32   inUse;
+    Int32   instIndex;
+    Int32   coreIdx;
+    Int32   codecMode;
+    Int32   codecModeAux;
+    Int32   productId;
+    Int32   loggingEnable;
+    Uint32  isDecoder;
+} CodecInstRef;
+    PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
+    RetCode cmd_ret;
+    int productId;
+    VPUDebugInfo debugInfo;
+    uint32_t coreIdx;
+    uint32_t instIndex;
+    Uint32 productCode;
+    CodecInstRef* pRefCodecInst = (CodecInstRef *)mediaCtx->decHandle;
+
+    coreIdx = mediaCtx->coreIdx;
+    instIndex = pRefCodecInst->instIndex;
+    VLOG(INFO, "+%s core=%d, inst=%d\n", __FUNCTION__, coreIdx, instIndex);
+    
+    productId = VPU_GetProductId(mediaCtx->coreIdx);
+
+    if (PRODUCT_ID_W6_SERIES(productId)) {
+        int i;
+        for ( i = 0 ; i < 20 ; i++) {
+#define REG_BASE 0x00
+#define VCPU_CUR_PC                 (REG_BASE + 0x0004)
+#define VCPU_CUR_LR                 (REG_BASE + 0x0008)
+            VLOG(INFO, "LR=0x%x, PC=0x%x\n", vdi_read_register(coreIdx, VCPU_CUR_LR), vdi_read_register(coreIdx, VCPU_CUR_PC));
+            osal_msleep(0);
+        }
+    }
+    else if (PRODUCT_ID_W5_SERIES(productId)) {
+        int i;
+        for ( i = 0 ; i < 20 ; i++) {
+#define REG_BASE 0x00
+#define VCPU_CUR_PC                 (REG_BASE + 0x0004)
+#define VCPU_CUR_LR                 (REG_BASE + 0x0008)
+            VLOG(INFO, "LR=0x%x, PC=0x%x\n", vdi_read_register(coreIdx, VCPU_CUR_LR), vdi_read_register(coreIdx, VCPU_CUR_PC));
+            osal_msleep(0);
+        }
+        cmd_ret = VPU_DecGiveCommand(mediaCtx->decHandle, GET_DEBUG_INFORM, &debugInfo);
+        if (cmd_ret != RETCODE_SUCCESS) {
+            printf("-%s GET_DEBUG_INFOM command fail \n", __FUNCTION__);
+            return;
+        }
+
+        VLOG(TRACE, "++ interrupt flags \n");
+        VLOG(TRACE, "     pend_intrpt_idc = 0x%x \n", (debugInfo.regs[0x0c]>>16)&0xffff);
+        VLOG(TRACE, "     multi_int_reason = 0x%x \n", debugInfo.regs[0x0c]&0xffff);
+        VLOG(TRACE, "     last interrupt reason = 0x%x \n", debugInfo.regs[0x0d]);
+        VLOG(TRACE, "-- interrupt flags \n\n");
+
+        VLOG(TRACE, "++ available core flags \n");
+        VLOG(TRACE, "     STAGE_SEEK      core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 0)&0x0f));
+        VLOG(TRACE, "     STAGE_PARSING   core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 4)&0x0f));
+        VLOG(TRACE, "     STAGE_DEC/ENC   core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 8)&0x0f));
+        VLOG(TRACE, "     STAGE_PACKAGING core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 12)&0x0f));
+        VLOG(TRACE, "-- avaiable core flags \n\n");
+
+        VLOG(TRACE, "++ the number of the allocated queue and commands in report queue\n");
+        VLOG(TRACE, "     inst0={que_cnt=%d, rq_cnt=%d} inst1={que_cnt=%d, rq_cnt=%d} inst2={que_cnt=%d, rq_cnt=%d} inst3={que_cnt=%d, rq_cnt=%d}\n",
+            ((((debugInfo.regs[0x06] >> 0)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x06] >> 0)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x06] >> 8)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x06] >> 8)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x06] >> 16)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x06] >> 16)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x06] >> 24)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x06] >> 24)&0xff)>>0) & 0xf));
+        VLOG(TRACE, "     inst4={que_cnt=%d, rq_cnt=%d} inst5={que_cnt=%d, rq_cnt=%d} inst6={que_cnt=%d, rq_cnt=%d} inst7={que_cnt=%d, rq_cnt=%d}\n",
+            ((((debugInfo.regs[0x07] >> 0)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x07] >> 0)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x07] >> 8)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x07] >> 8)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x07] >> 16)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x07] >> 16)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x07] >> 24)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x07] >> 24)&0xff)>>0) & 0xf));
+        VLOG(TRACE, "     inst7={que_cnt=%d, rq_cnt=%d} inst9={que_cnt=%d, rq_cnt=%d} inst10={que_cnt=%d, rq_cnt=%d} inst11={que_cnt=%d, rq_cnt=%d}\n",
+            ((((debugInfo.regs[0x08] >> 0)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x08] >> 0)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x08] >> 8)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x08] >> 8)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x08] >> 16)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x08] >> 16)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x08] >> 24)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x08] >> 24)&0xff)>>0) & 0xf));
+        VLOG(TRACE, "     inst12={que_cnt=%d, rq_cnt=%d} inst13={que_cnt=%d, rq_cnt=%d} inst14={que_cnt=%d, rq_cnt=%d} inst15={que_cnt=%d, rq_cnt=%d}\n",
+            ((((debugInfo.regs[0x09] >> 0)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x09] >> 0)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x09] >> 8)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x09] >> 8)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x09] >> 16)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x09] >> 16)&0xff)>>0) & 0xf),
+            ((((debugInfo.regs[0x09] >> 24)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x09] >> 24)&0xff)>>0) & 0xf));
+        VLOG(TRACE, "-- the number of the allocated queue and commands in report queue\n\n");
+
+
+        VLOG(TRACE, "++ status of instance handle\n");
+        VLOG(TRACE, "     inst0 status=%d, inst1 status=%d, inst2 status=%d, inst3 status=%d \n",
+            ((debugInfo.regs[0x0A] >> 0)&0xf), ((debugInfo.regs[0x0A] >> 4)&0xf), ((debugInfo.regs[0x0A] >> 8)&0xf), ((debugInfo.regs[0x0A] >> 12)&0xf));
+        VLOG(TRACE, "     inst4 status=%d, inst5 status=%d, inst6 status=%d, inst7 status=%d \n",
+            ((debugInfo.regs[0x0A] >> 16)&0xf), ((debugInfo.regs[0x0A] >> 20)&0xf), ((debugInfo.regs[0x0A] >> 24)&0xf), ((debugInfo.regs[0x0A] >> 28)&0xf));
+
+        VLOG(TRACE, "     inst8 status=%d, inst9 status=%d, inst10 status=%d, inst11 status=%d \n",
+            ((debugInfo.regs[0x0B] >> 0)&0xf), ((debugInfo.regs[0x0B] >> 4)&0xf), ((debugInfo.regs[0x0B] >> 8)&0xf), ((debugInfo.regs[0x0B] >> 12)&0xf));
+
+        VLOG(TRACE, "     inst12 status=%d, inst13 status=%d, inst14 status=%d, inst15 status=%d \n",
+            ((debugInfo.regs[0x0B] >> 16)&0xf), ((debugInfo.regs[0x0B] >> 20)&0xf), ((debugInfo.regs[0x0B] >> 24)&0xf), ((debugInfo.regs[0x0B] >> 28)&0xf));
+        VLOG(TRACE, "-- status of instance handle\n\n");
+
+        VLOG(TRACE, "++ active command in each stage\n");
+        VLOG(TRACE, "     STAGE_SEEK, CMD_INST_ID = %d \n", (debugInfo.regs[0x10]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x10]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_IDX = %d \n", (debugInfo.regs[0x11]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x11]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x12]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_STATUS = %d \n", (debugInfo.regs[0x12]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_CMD = %d \n", (debugInfo.regs[0x13]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x13]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x14]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_SEEK, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x14]>>0)&0xffff);
+
+
+        VLOG(TRACE, "     STAGE_PARSING, CMD_INST_ID = %d \n", (debugInfo.regs[0x15]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x15]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_IDX = %d \n", (debugInfo.regs[0x16]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x16]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x17]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_STATUS = %d \n", (debugInfo.regs[0x17]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_CMD = %d \n", (debugInfo.regs[0x18]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x18]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x19]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PARSING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x19]>>0)&0xffff);
+
+
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_INST_ID = %d \n", (debugInfo.regs[0x1a]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x1a]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_IDX = %d \n", (debugInfo.regs[0x1b]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x1b]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x1c]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_STATUS = %d \n", (debugInfo.regs[0x1c]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_CMD = %d \n", (debugInfo.regs[0x1d]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x1d]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x1e]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x1e]>>0)&0xffff);
+
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_INST_ID = %d \n", (debugInfo.regs[0x1f]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x1f]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_IDX = %d \n", (debugInfo.regs[0x20]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x20]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x21]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_STATUS = %d \n", (debugInfo.regs[0x21]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_CMD = %d \n", (debugInfo.regs[0x22]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x22]>>0)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x23]>>16)&0xffff);
+        VLOG(TRACE, "     STAGE_PACKAGING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x23]>>0)&0xffff);
+        VLOG(TRACE, "-- active command in each stage\n\n");
+
+
+        VLOG(TRACE, "++ queued commands in each stage\n");
+        VLOG(TRACE, "     STAGE_SEEK      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
+            ((debugInfo.regs[0x30] >> 0) & 0xf), ((debugInfo.regs[0x30] >> 4) & 0xf),
+            ((debugInfo.regs[0x30] >> 8) & 0xf), ((debugInfo.regs[0x30] >> 12) & 0xf),
+            ((debugInfo.regs[0x30] >> 16) & 0xf), ((debugInfo.regs[0x30] >> 20) & 0xf),
+            ((debugInfo.regs[0x30] >> 24) & 0xf), ((debugInfo.regs[0x30] >> 28) & 0xf));
+        VLOG(TRACE, "     STAGE_SEEK      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
+            ((debugInfo.regs[0x31] >> 0) & 0xf), ((debugInfo.regs[0x31] >> 4) & 0xf),
+            ((debugInfo.regs[0x31] >> 8) & 0xf), ((debugInfo.regs[0x31] >> 12) & 0xf),
+            ((debugInfo.regs[0x31] >> 16) & 0xf), ((debugInfo.regs[0x31] >> 20) & 0xf),
+            ((debugInfo.regs[0x31] >> 24) & 0xf), ((debugInfo.regs[0x31] >> 28) & 0xf));
+        VLOG(TRACE, "     STAGE_PARSING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
+            ((debugInfo.regs[0x32] >> 0) & 0xf), ((debugInfo.regs[0x32] >> 4) & 0xf),
+            ((debugInfo.regs[0x32] >> 8) & 0xf), ((debugInfo.regs[0x32] >> 12) & 0xf),
+            ((debugInfo.regs[0x32] >> 16) & 0xf), ((debugInfo.regs[0x32] >> 20) & 0xf),
+            ((debugInfo.regs[0x32] >> 24) & 0xf), ((debugInfo.regs[0x32] >> 28) & 0xf));
+        VLOG(TRACE, "     STAGE_PARSING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
+            ((debugInfo.regs[0x33] >> 0) & 0xf), ((debugInfo.regs[0x33] >> 4) & 0xf),
+            ((debugInfo.regs[0x33] >> 8) & 0xf), ((debugInfo.regs[0x33] >> 12) & 0xf),
+            ((debugInfo.regs[0x33] >> 16) & 0xf), ((debugInfo.regs[0x33] >> 20) & 0xf),
+            ((debugInfo.regs[0x33] >> 24) & 0xf), ((debugInfo.regs[0x33] >> 28) & 0xf));
+        VLOG(TRACE, "     STAGE_DEC/ENCODING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
+            ((debugInfo.regs[0x34] >> 0) & 0xf), ((debugInfo.regs[0x34] >> 4) & 0xf),
+            ((debugInfo.regs[0x34] >> 8) & 0xf), ((debugInfo.regs[0x34] >> 12) & 0xf),
+            ((debugInfo.regs[0x34] >> 16) & 0xf), ((debugInfo.regs[0x34] >> 20) & 0xf),
+            ((debugInfo.regs[0x34] >> 24) & 0xf), ((debugInfo.regs[0x34] >> 28) & 0xf));
+        VLOG(TRACE, "     STAGE_DEC/ENCODING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
+            ((debugInfo.regs[0x35] >> 0) & 0xf), ((debugInfo.regs[0x35] >> 4) & 0xf),
+            ((debugInfo.regs[0x35] >> 8) & 0xf), ((debugInfo.regs[0x35] >> 12) & 0xf),
+            ((debugInfo.regs[0x35] >> 16) & 0xf), ((debugInfo.regs[0x35] >> 20) & 0xf),
+            ((debugInfo.regs[0x35] >> 24) & 0xf), ((debugInfo.regs[0x35] >> 28) & 0xf));
+        VLOG(TRACE, "     STAGE_PACKAGING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
+            ((debugInfo.regs[0x36] >> 0) & 0xf), ((debugInfo.regs[0x36] >> 4) & 0xf),
+            ((debugInfo.regs[0x36] >> 8) & 0xf), ((debugInfo.regs[0x36] >> 12) & 0xf),
+            ((debugInfo.regs[0x36] >> 16) & 0xf), ((debugInfo.regs[0x36] >> 20) & 0xf),
+            ((debugInfo.regs[0x36] >> 24) & 0xf), ((debugInfo.regs[0x36] >> 28) & 0xf));
+        VLOG(TRACE, "     STAGE_PACKAGING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
+            ((debugInfo.regs[0x37] >> 0) & 0xf), ((debugInfo.regs[0x37] >> 4) & 0xf),
+            ((debugInfo.regs[0x37] >> 8) & 0xf), ((debugInfo.regs[0x37] >> 12) & 0xf),
+            ((debugInfo.regs[0x37] >> 16) & 0xf), ((debugInfo.regs[0x37] >> 20) & 0xf),
+            ((debugInfo.regs[0x37] >> 24) & 0xf), ((debugInfo.regs[0x37] >> 28) & 0xf));
+        VLOG(TRACE, "-- queued commands in each stage\n\n");
+
+        // VLOG(TRACE, "-- vp9 vcore wtl status \n\n");
+        // VLOG(TRACE, "DEBUG_SCHED_VCORE_STATUS %08x \n", (debugInfo.regs[0x38]));
+        // VLOG(TRACE, "DEBUG_FBC_AVAIL          %08x \n", (debugInfo.regs[0x39]));
+        // VLOG(TRACE, "DEBUG_WTL_AVAIL          %08x \n", (debugInfo.regs[0x3A]));
+        // VLOG(TRACE, "-- vp9 vcore wtl status \n\n");
+    }
+    VLOG(INFO, "-%s core=%d, inst=%d\n", __FUNCTION__, coreIdx, instIndex);
+}
 static void VpuApiAddSurfaceInfo(
     PDDI_MEDIA_CONTEXT mediaCtx,
     VASurfaceID        surfaceId,
@@ -1628,6 +1840,8 @@ static VAStatus VpuApiDecOpen(
     mediaCtx->decOP.cbcrInterleave  = mediaCtx->cbcrInterleave;
     mediaCtx->decOP.nv21            = mediaCtx->nv21;
     mediaCtx->decOP.vaEnable        = TRUE;
+    mediaCtx->decOP.bitstreamBuffer = 0; // if bitstreamMode is BS_MODE_PIC_END. this value should be 0
+    mediaCtx->decOP.bitstreamBufferSize = 0; // if bitstreamMode is BS_MODE_PIC_END. this value should be 0
 
     retCode = VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP);
     if (retCode != RETCODE_SUCCESS) {
@@ -1735,6 +1949,7 @@ static VAStatus VpuApiDecSeqInit(
     if (intrFlag == -1) {
         printf("[CNM_VPUAPI] FAIL VPU_WaitInterruptEx for VPU_DecIssueSeqInit: timeout=%dms\n", VPU_DEC_TIMEOUT);
         VPU_DecCompleteSeqInit(hdl, &seqInfo);
+        VpuApiDecPrintDebugInfo(ctx);
         return VA_STATUS_ERROR_TIMEDOUT;
     }
 
@@ -1795,6 +2010,7 @@ static VAStatus VpuApiDecGetResult(
     intrFlag = VPU_WaitInterruptEx(hdl, VPU_DEC_TIMEOUT);
     if (intrFlag == -1) {
         printf("[CNM_VPUAPI] FAIL VPU_WaitInterruptEx for VPU_DecStartOneFrame : timeout=%dms\n", VPU_DEC_TIMEOUT);
+        VpuApiDecPrintDebugInfo(ctx);
         VPU_DecGetOutputInfo(hdl, &outputInfo);
         DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_TIMEDOUT;
@@ -1828,11 +2044,11 @@ static VAStatus VpuApiDecGetResult(
     if (outputInfo.numOfErrMBs > 0) {
         printf("[CNM_VPUAPI] Warning Error Block: %d\n", outputInfo.numOfErrMBs);
     }
-
-    printf("[CNM_VPUAPI] IDX %d | PIC %d | NAL %d | BufAddrY : 0x%x | BufAddrCb : 0x%x | BufAddrCr : 0x%x |  BYTEPOS 0x%x ~ 0x%x | CONSUME : %d | DISP %dx%d\n",
+    printf("[CNM_VPUAPI] IDX %d | SURFACE %d | PIC %d | NAL %d | BufAddrY : 0x%x | BufAddrCb : 0x%x | BufAddrCr : 0x%x | vaParamAddr : 0x%x | BYTEPOS 0x%x ~ 0x%x | CONSUME : %d | DISP %dx%d\n",
         mediaCtx->decIdx,
+        surfaceID,
         outputInfo.picType, outputInfo.nalType,
-        outputInfo.vaDecodeBufAddrY, outputInfo.vaDecodeBufAddrCb, outputInfo.vaDecodeBufAddrCr,
+        outputInfo.vaDecodeBufAddrY, outputInfo.vaDecodeBufAddrCb, outputInfo.vaDecodeBufAddrCr, outputInfo.vaParamAddr,
         outputInfo.bytePosFrameStart, outputInfo.bytePosFrameEnd, outputInfo.bytePosFrameEnd - outputInfo.bytePosFrameStart,
         outputInfo.decPicWidth, outputInfo.decPicHeight);
 
@@ -2023,7 +2239,11 @@ static void VpuApiDecClose(
             vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->bsBuf[index], DEC_BS, 0);
     }
 
-    VPU_DecClose(mediaCtx->decHandle);
+    if (VPU_DecClose(mediaCtx->decHandle) == RETCODE_VPU_STILL_RUNNING) {
+        QueueStatusInfo qStatus;
+        VPU_DecGiveCommand(mediaCtx->decHandle, DEC_GET_QUEUE_STATUS, &qStatus);
+        printf("[CNM_VPUAPI] VPU_DecClose fail RETCODE_VPU_STILL_RUNNING instanceQueueCount=%d, reportQueueCount=%d\n", qStatus.instanceQueueCount, qStatus.reportQueueCount);
+    }
     mediaCtx->seqInited = FALSE;
     mediaCtx->numOfRenderTargets = 0;
 
