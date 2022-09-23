@@ -147,15 +147,24 @@ void MediaDecodeDdiTest::DecodeExecute(DecTestData *pDecData, Platform_t platfor
 DecodeTestConfig::DecodeTestConfig()
 {
     m_mapPlatformFeatureID[DeviceConfigTable[igfxSKLAKE]]     = {
+#ifdef CNM_FPGA_PLATFORM
+#else
         TEST_Intel_Decode_HEVC,
         TEST_Intel_Decode_AVC ,
+#endif
     };
     m_mapPlatformFeatureID[DeviceConfigTable[igfxBROXTON]]    = {
+#ifdef CNM_FPGA_PLATFORM
+#else
         TEST_Intel_Decode_HEVC,
         TEST_Intel_Decode_AVC ,
+#endif
     };
     m_mapPlatformFeatureID[DeviceConfigTable[igfxBROADWELL]]  = {
+#ifdef CNM_FPGA_PLATFORM
+#else
         TEST_Intel_Decode_AVC ,
+#endif
     };
 }
 
