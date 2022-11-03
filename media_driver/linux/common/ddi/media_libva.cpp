@@ -442,6 +442,16 @@ static void VpuApiCapInit()
         j = j + numAttr;
     }
 
+#ifdef VA_PROFILE_H264_HIGH_10
+    i++;
+    capMap[i].profile = VAProfileH264High10;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+#endif
+
     i++;
     capMap[i].profile = VAProfileH264ConstrainedBaseline;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
@@ -631,7 +641,11 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
     // else if (entrypoint == VAEntrypointVLD)    /* vld */
     if (entrypoint == VAEntrypointVLD)    /* vld */
     {
+#ifdef VA_PROFILE_H264_HIGH_10
+        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2 || profile == VAProfileH264High10) {
+#else
         if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2) {
+#endif
             attribs[i].type = VASurfaceAttribPixelFormat;
             attribs[i].value.type = VAGenericValueTypeInteger;
             attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
@@ -1136,7 +1150,7 @@ static void AllocateLinearFrameBuffer(
     pVb->phys_addr = 0;
     pVb->size      = fbSize;
 
-    //printf("[CNM_VPUAPI] %s Allocate Linear buffer i=%d, wtlFormat=%d, stride=%d, height=%d, fbSize=%d\n", __FUNCTION__, index, mediaCtx->wtlFormat, mediaCtx->linearStride, mediaCtx->linearHeight, fbSize);
+    printf("[CNM_VPUAPI] %s Allocate Linear buffer i=%d, wtlFormat=%d, stride=%d, height=%d, fbSize=%d\n", __FUNCTION__, index, mediaCtx->wtlFormat, mediaCtx->linearStride, mediaCtx->linearHeight, fbSize);
     if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, DEC_FB_LINEAR, 0) < 0)
         printf("[CNM_VPUAPI] FAIL vdi_allocate_dma_memory linearBuf\n");
 
@@ -1470,7 +1484,8 @@ static VAStatus VpuApiInit(
     vdi_init(coreIdx);
     vdi_vaapi_driver_lock(coreIdx);
 
-    if (!VPU_IsInit(coreIdx)) {
+    // if (!VPU_IsInit(coreIdx)) 
+    {
         printf("[CNM_VPUAPI] Start HW INIT.\n");
 #ifdef CNM_FPGA_PLATFORM
         vdi_hw_reset(coreIdx);
@@ -1805,6 +1820,9 @@ static VAStatus VpuApiDecOpen(
         return VA_STATUS_ERROR_RESOLUTION_NOT_SUPPORTED;
 
     switch (profile) {
+#ifdef VA_PROFILE_H264_HIGH_10
+    case VAProfileH264High10:
+#endif
     case VAProfileH264High:
     case VAProfileH264Main:
     case VAProfileH264ConstrainedBaseline:
@@ -5367,11 +5385,12 @@ VAStatus DdiMedia_CreateConfig (
                 continue;
             }
             if (s_vpuApiAttrs[i].actual_profile == profile) {
+                // printf("[CNM_DEBUG]  %s actual_profile[%d]=%d, profile=%d, actual_entrypoint[%d]=0x%x, entrypoint=0x%x \n", __FUNCTION__, i, s_vpuApiAttrs[i].actual_profile, profile, i, s_vpuApiAttrs[i].actual_entrypoint, entrypoint);
                 find_profile = true;
                 if (s_vpuApiAttrs[i].actual_entrypoint == entrypoint) {
                     find_entrypoint = true;
                     bool is_valid_attr = false;
-                    // printf("[CNM_DEBUG]  %s idx=%d, profile actual_profile=0x%x, actual_entrypoint=0x%x \n", __FUNCTION__, i, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
+                    // printf("[CNM_DEBUG]  %s idx=%d, profile actual_profile=%d, actual_entrypoint=0x%x \n", __FUNCTION__, i, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
                     for (j=0; j < num_attribs; j++) {
                         // printf("[CNM_DEBUG]  %s try find_valid_attr jdx=%d, type=0x%x, value=0x%x, type_list=0x%x, value_list=0x%x \n", __FUNCTION__, j, s_vpuApiAttrs[i].attrType, s_vpuApiAttrs[i].value, attrib_list[j].type, attrib_list[j].value);
                         if (attrib_list[j].type == s_vpuApiAttrs[i].attrType) {
@@ -5409,7 +5428,7 @@ VAStatus DdiMedia_CreateConfig (
                                 
                                 if ((s_vpuApiAttrs[i].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS)) {
                                     if ((attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_EQUAL_MULTI_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_POWER_OF_TWO_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_ROWS)) {
-                                        if (profile == VAProfileH264Main || profile == VAProfileH264High || profile == VAProfileH264ConstrainedBaseline) {
+                                        if (profile == VAProfileH264Main || profile == VAProfileH264High || profile == VAProfileH264ConstrainedBaseline || profile == VAProfileH264High10) {
 
                                         }
                                         else {
@@ -5419,7 +5438,7 @@ VAStatus DdiMedia_CreateConfig (
                                     }
                                 } else if ((s_vpuApiAttrs[i].value & (VA_ENC_SLICE_STRUCTURE_EQUAL_ROWS | VA_ENC_SLICE_STRUCTURE_MAX_SLICE_SIZE))) {
                                     if ((attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_POWER_OF_TWO_ROWS) || (attrib_list[j].value & VA_ENC_SLICE_STRUCTURE_ARBITRARY_ROWS)) {
-                                        if (profile == VAProfileH264Main || profile == VAProfileH264High || profile == VAProfileH264ConstrainedBaseline) {
+                                        if (profile == VAProfileH264Main || profile == VAProfileH264High || profile == VAProfileH264ConstrainedBaseline || profile == VAProfileH264High10) {
 
                                         } else {
                                             is_valid_attr = true;
@@ -5456,7 +5475,7 @@ VAStatus DdiMedia_CreateConfig (
                         // printf("[CNM_DEBUG]%s can't find valid attribute\n", __FUNCTION__);
                     }
                     else {
-                        // printf("[CNM_DEBUG]%s can find valid attribute config_id=0x%x, profile=0x%x, entrypoint=0x%x\n", __FUNCTION__, s_vpuApiAttrs[i].configId, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
+                        // printf("[CNM_DEBUG]%s can find valid attribute config_id=0x%x, profile=%d, entrypoint=0x%x\n", __FUNCTION__, s_vpuApiAttrs[i].configId, s_vpuApiAttrs[i].actual_profile, s_vpuApiAttrs[i].actual_entrypoint);
                         found_config_id = s_vpuApiAttrs[i].configId;
                         if (s_vpuApiAttrs[i].actual_entrypoint == VAEntrypointEncSlice || s_vpuApiAttrs[i].actual_entrypoint == VAEntrypointEncSliceLP) {
                             if (attrib_list[j].type == VAConfigAttribRateControl) {
@@ -5497,7 +5516,7 @@ VAStatus DdiMedia_CreateConfig (
             }
         }
     }
-    // printf("[CNM_DEBUG]-%s profile=0x%x, entrypoint=0x%x, status=0x%x, config_id=0x%x\n", __FUNCTION__, profile, entrypoint, status, *config_id);
+    // printf("[CNM_DEBUG]-%s profile=%d, entrypoint=0x%x, status=0x%x, config_id=0x%x\n", __FUNCTION__, profile, entrypoint, status, *config_id);
 
     if (*config_id >= VPUAPI_ENCODER_CONFIG_ID_START &&
         *config_id < VPUAPI_MAX_CONFIG_ID) {

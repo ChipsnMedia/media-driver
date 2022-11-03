@@ -207,6 +207,9 @@ CODECHAL_MODE MediaLibvaCapsG12::GetDecodeCodecMode(VAProfile profile)
     int8_t vaProfile = (int8_t)profile;
     switch (vaProfile)
     {
+#ifdef VA_PROFILE_H264_HIGH_10
+        case VAProfileH264High10:
+#endif
         case VAProfileH264High:
         case VAProfileH264Main:
         case VAProfileH264ConstrainedBaseline:
@@ -254,6 +257,9 @@ std::string MediaLibvaCapsG12::GetDecodeCodecKey(VAProfile profile)
     int8_t vaProfile = (int8_t)profile;
     switch (vaProfile)
     {
+#ifdef VA_PROFILE_H264_HIGH_10
+        case VAProfileH264High10:
+#endif
         case VAProfileH264High:
         case VAProfileH264Main:
         case VAProfileH264ConstrainedBaseline:
@@ -1308,6 +1314,16 @@ VAStatus MediaLibvaCapsG12::QuerySurfaceAttributes(
                 i++;
             }
         }
+#ifdef VA_PROFILE_H264_HIGH_10
+        else if (profile == VAProfileH264High10)
+        {
+            attribs[i].type = VASurfaceAttribPixelFormat;
+            attribs[i].value.type = VAGenericValueTypeInteger;
+            attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+            attribs[i].value.value.i = VA_FOURCC_P010;
+            i++;
+        }
+#endif
         else if (profile == VAProfileAV1Profile0)
         {
             attribs[i].type = VASurfaceAttribPixelFormat;
@@ -2091,6 +2107,12 @@ VAStatus MediaLibvaCapsG12::CreateDecAttributes(
     {
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP;
     }
+#ifdef VA_PROFILE_H264_HIGH_10
+    else if (profile == VAProfileH264High10)
+    {
+        attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP;
+    }
+#endif
     else
     {
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_RGB32;

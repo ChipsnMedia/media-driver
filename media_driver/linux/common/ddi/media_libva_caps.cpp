@@ -1027,6 +1027,12 @@ VAStatus MediaLibvaCaps::CreateDecAttributes(
         // at present, latest libva have not support RGB24.
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV444 | VA_RT_FORMAT_YUV400 | VA_RT_FORMAT_YUV411 | VA_RT_FORMAT_RGB16 | VA_RT_FORMAT_RGB32;
     }
+ #ifdef VA_PROFILE_H264_HIGH_10
+    else if(profile == VAProfileH264High10)
+    {
+        attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10;
+    }
+#endif
     else if(profile == VAProfileHEVCMain10)
     {
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10;
@@ -1311,6 +1317,22 @@ VAStatus MediaLibvaCaps::LoadAvcDecProfileEntrypoints()
             configNum = m_decConfigs.size() - configStartIdx;
             AddProfileEntry(profile[i], VAEntrypointVLD, attributeList, configStartIdx, configNum);
         }
+#ifdef VA_PROFILE_H264_HIGH_10
+        status = CreateDecAttributes(VAProfileH264High10, VAEntrypointVLD, &attributeList);
+        DDI_CHK_RET(status, "Failed to initialize Caps!");
+
+        configStartIdx = m_decConfigs.size();
+        for (int32_t j = 0; j < 2; j++)
+        {
+            for (int32_t k = 0; k < 2; k++)
+            {
+                AddDecConfig(m_decSliceMode[j], VA_ENCRYPTION_TYPE_NONE, m_decProcessMode[k]);
+            }
+        }
+
+        configNum = m_decConfigs.size() - configStartIdx;
+        AddProfileEntry(VAProfileH264High10, VAEntrypointVLD, attributeList, configStartIdx, configNum);
+#endif
     }
 #endif
     return status;
@@ -3079,6 +3101,9 @@ bool MediaLibvaCaps::IsAvcProfile(VAProfile profile)
     return (
             (profile == VAProfileH264ConstrainedBaseline) ||
             (profile == VAProfileH264Main) ||
+#ifdef VA_PROFILE_H264_HIGH_10
+            (profile == VAProfileH264High10) ||
+#endif
             (profile == VAProfileH264High)
            );
 }
@@ -3226,6 +3251,9 @@ CODECHAL_MODE MediaLibvaCaps::GetDecodeCodecMode(VAProfile profile)
 {
     switch (profile)
     {
+#ifdef VA_PROFILE_H264_HIGH_10
+        case VAProfileH264High10:
+#endif
         case VAProfileH264High:
         case VAProfileH264Main:
         case VAProfileH264ConstrainedBaseline:
@@ -3265,6 +3293,9 @@ std::string MediaLibvaCaps::GetDecodeCodecKey(VAProfile profile)
 {
     switch (profile)
     {
+#ifdef VA_PROFILE_H264_HIGH_10
+        case VAProfileH264High10:
+#endif
         case VAProfileH264High:
         case VAProfileH264Main:
         case VAProfileH264ConstrainedBaseline:

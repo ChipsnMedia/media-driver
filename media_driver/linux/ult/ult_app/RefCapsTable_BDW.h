@@ -36,6 +36,9 @@ std::vector<FeatureID> refFeatureIDTable_BDW = {
     { VAProfileH264ConstrainedBaseline, VAEntrypointVLD                 },
     { VAProfileH264ConstrainedBaseline, VAEntrypointEncSlice            },
     { VAProfileH264ConstrainedBaseline, VAEntrypointEncSliceLP          },
+#ifdef VA_PROFILE_H264_HIGH_10
+    { VAProfileH264High10             , VAEntrypointVLD            },
+#endif
     // { VAProfileH264ConstrainedBaseline, VAEntrypointFEI                 },
     // { VAProfileMPEG2Simple            , VAEntrypointVLD                 },
     // { VAProfileMPEG2Simple            , VAEntrypointEncSlice            },
