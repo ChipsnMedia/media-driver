@@ -257,6 +257,11 @@ std::string MediaLibvaCapsG12::GetDecodeCodecKey(VAProfile profile)
     int8_t vaProfile = (int8_t)profile;
     switch (vaProfile)
     {
+#ifdef VA_PROFILE_AVS2_MAIN_10
+        case VAProfileAVS2Main:
+        case VAProfileAVS2Main10:
+            return DECODE_ID_AVS2;
+#endif
 #ifdef VA_PROFILE_H264_HIGH_10
         case VAProfileH264High10:
 #endif
@@ -813,6 +818,8 @@ VAStatus MediaLibvaCapsG12::LoadProfileEntrypoints()
     DDI_CHK_RET(status, "Failed to initialize Caps!");
     status = LoadAv1DecProfileEntrypoints();
     DDI_CHK_RET(status, "Failed to initialize Caps!");
+    status = LoadAVS2DecProfileEntrypoints();
+    DDI_CHK_RET(status, "Failed to initialize AVS2 decoding Caps!");
     status = LoadNoneProfileEntrypoints();
     DDI_CHK_RET(status, "Failed to initialize Caps!");
     status = m_CapsCp->LoadCpProfileEntrypoints();
@@ -984,6 +991,16 @@ VAStatus MediaLibvaCapsG12::AddEncSurfaceAttributes(
                 numAttribs++;
             }
         }
+#ifdef VA_PROFILE_H264_HIGH_10
+        else if (profile == VAProfileH264High10)
+        {
+            attribList[numAttribs].type = VASurfaceAttribPixelFormat;
+            attribList[numAttribs].value.type = VAGenericValueTypeInteger;
+            attribList[numAttribs].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+            attribList[numAttribs].value.value.i = VA_FOURCC('P', '0', '1', '0');
+            numAttribs++;
+        }
+#endif
         else if(profile == VAProfileHEVCMain12)
         {
             attribList[numAttribs].type = VASurfaceAttribPixelFormat;
@@ -2113,6 +2130,16 @@ VAStatus MediaLibvaCapsG12::CreateDecAttributes(
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP;
     }
 #endif
+#ifdef VA_PROFILE_AVS2_MAIN_10
+    else if(profile == VAProfileAVS2Main)
+    {
+        attrib.value = VA_RT_FORMAT_YUV420;
+    }
+    else if(profile == VAProfileAVS2Main10)
+    {
+        attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10;
+    }
+#endif
     else
     {
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_RGB32;
@@ -2231,6 +2258,12 @@ VAStatus MediaLibvaCapsG12::CreateDecAttributes(
     {
         attrib.value = CODEC_8K_MAX_PIC_WIDTH;
     }
+#ifdef VA_PROFILE_AVS2_MAIN_10
+    if(IsAvs2Profile(profile))
+    {
+        attrib.value = CODEC_8K_MAX_PIC_WIDTH;
+    }
+#endif
     if(IsHevcProfile(profile) || IsVp9Profile(profile) || IsAV1Profile(profile))
     {
         attrib.value = CODEC_16K_MAX_PIC_WIDTH;
@@ -2255,6 +2288,12 @@ VAStatus MediaLibvaCapsG12::CreateDecAttributes(
     {
         attrib.value = CODEC_8K_MAX_PIC_HEIGHT;
     }
+#ifdef VA_PROFILE_AVS2_MAIN_10
+    if(IsAvs2Profile(profile))
+    {
+        attrib.value = CODEC_8K_MAX_PIC_HEIGHT;
+    }
+#endif
     if(IsHevcProfile(profile) || IsVp9Profile(profile) || IsAV1Profile(profile))
     {
         attrib.value = CODEC_16K_MAX_PIC_HEIGHT;

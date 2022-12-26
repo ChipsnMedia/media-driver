@@ -45,8 +45,8 @@ public:
         // TGL supported Encode format
         static struct EncodeFormatTable encodeFormatTableTGL[] =
         {
-            {AVC, DualPipe, VA_RT_FORMAT_YUV420},
-            {AVC, Vdenc, VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV444 | VA_RT_FORMAT_RGB32},
+            {AVC, DualPipe, VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP},
+            {AVC, Vdenc, VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP | VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV444 | VA_RT_FORMAT_RGB32},
             {HEVC, DualPipe, VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP | VA_RT_FORMAT_YUV420_12 |
              VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV422_10 |  VA_RT_FORMAT_YUV422_12},
             {HEVC, Vdenc, VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP |

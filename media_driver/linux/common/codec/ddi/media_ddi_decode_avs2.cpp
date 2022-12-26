@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2016-2017, Intel Corporation
+* Copyright (c) 2017-2020, Intel Corporation
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -20,25 +20,21 @@
 * OTHER DEALINGS IN THE SOFTWARE.
 */
 //!
-//! \file     media_ddi_decode_const.h
-//! \brief    Add some const string definition for media_libva_decoder
+//! \file     media_ddi_decode_avs2.cpp
+//! \brief    The class implementation of DdiDecodeAVS2  for AVS2 decode
 //!
 
-// The defined const string is used as the Key for supported decoding codec list. And
-// it is included by each decoding codec.
-// And it is also included in media_libva_decoder.c. The corresponding string is used
-// as the key to search and create one instance from the supported decoding list.
+#include "media_libva_decoder.h"
+#include "media_libva_util.h"
+#include "media_ddi_decode_avs2.h"
+#include "mos_solo_generic.h"
+#include "media_ddi_decode_const.h"
+#include "media_ddi_factory.h"
+#include "media_interfaces.h"
 
-#ifndef _MEDIA_LIBVA_DECODE_CONST_H_
-#define _MEDIA_LIBVA_DECODE_CONST_H_
 
-#define DECODE_ID_NONE      "VIDEO_DEC_NONE"
-#define DECODE_ID_AVC       "VIDEO_DEC_H264"
-#define DECODE_ID_VP8       "VIDEO_DEC_VP8"
-#define DECODE_ID_VP9       "VIDEO_DEC_VP9"
-#define DECODE_ID_HEVC      "VIDEO_DEC_HEVC"
-#define DECODE_ID_MPEG2     "VIDEO_DEC_MPEG2"
-#define DECODE_ID_JPEG      "VIDEO_DEC_JPEG"
-#define DECODE_ID_VC1       "VIDEO_DEC_VC1"
-#define DECODE_ID_AVS2      "VIDEO_DEC_AVS2"
-#endif /*  _MEDIA_LIBVA_DECODE_CONST_H_ */
+extern template class MediaDdiFactory<DdiMediaDecode, DDI_DECODE_CONFIG_ATTR>;
+
+static bool avs2Registered =
+    MediaDdiFactory<DdiMediaDecode, DDI_DECODE_CONFIG_ATTR>::
+    RegisterCodec<DdiDecodeAVS2>(DECODE_ID_AVS2);

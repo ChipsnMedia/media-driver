@@ -126,7 +126,16 @@ if(${VP9_Decode_Supported} STREQUAL "yes")
         ${CMAKE_CURRENT_LIST_DIR}/media_ddi_decode_vp9.h
     )
 endif()
-
+if(${AVS2_Decode_Supported} STREQUAL "yes")
+    set(TMP_2_SOURCES_
+        ${TMP_2_SOURCES_}
+        ${CMAKE_CURRENT_LIST_DIR}/media_ddi_decode_avs2.cpp
+    )
+    set(TMP_2_HEADERS_
+        ${TMP_2_HEADERS_}
+        ${CMAKE_CURRENT_LIST_DIR}/media_ddi_decode_avs2.h
+    )
+endif()
 #encode
 set(TMP_3_SOURCES_ "")
 

@@ -1033,6 +1033,16 @@ VAStatus MediaLibvaCaps::CreateDecAttributes(
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10;
     }
 #endif
+#ifdef VA_PROFILE_AVS2_MAIN_10
+    else if(profile == VAProfileAVS2Main)
+    {
+        attrib.value = VA_RT_FORMAT_YUV420;
+    }
+    else if(profile == VAProfileAVS2Main10)
+    {
+        attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10;
+    }
+#endif
     else if(profile == VAProfileHEVCMain10)
     {
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10;
@@ -1361,7 +1371,7 @@ VAStatus MediaLibvaCaps::LoadAvcEncProfileEntrypoints()
                 VA_FEI_FUNCTION_PAK,
                 VA_FEI_FUNCTION_ENC_PAK};
 
-        uint32_t configStartIdx;
+        uint32_t configStartIdx, configNum;
 
         for (int32_t e = 0; e < 2; e++)
         {
@@ -1389,15 +1399,26 @@ VAStatus MediaLibvaCaps::LoadAvcEncProfileEntrypoints()
                         configStartIdx, m_encConfigs.size() - configStartIdx);
             }
         }
-    }
+#ifdef VA_PROFILE_H264_HIGH_10
+        status = CreateEncAttributes(VAProfileH264High10, VAEntrypointEncSlice, &attributeList);
+        DDI_CHK_RET(status, "Failed to initialize Caps!");
+        configStartIdx = m_encConfigs.size();
+        for (int32_t j = 0; j < 3; j++)
+        {
+            AddEncConfig(m_encRcMode[j]);
+        }
+        configNum = m_decConfigs.size() - configStartIdx;
+        AddProfileEntry(VAProfileH264High10, VAEntrypointEncSlice, attributeList, configStartIdx, configNum);
 #endif
+    }
+#endif // #if defined (_AVC_ENCODE_VME_SUPPORTED) || defined (_AVC_ENCODE_VDENC_SUPPORTED)
     return status;
 }
 
 VAStatus MediaLibvaCaps::LoadAvcEncLpProfileEntrypoints()
 {
     VAStatus status = VA_STATUS_SUCCESS;
-
+    uint32_t configStartIdx, configNum;
 #if defined (_AVC_ENCODE_VME_SUPPORTED) || defined (_AVC_ENCODE_VDENC_SUPPORTED)
     AttribMap *attributeList = nullptr;
     if (MEDIA_IS_SKU(&(m_mediaCtx->SkuTable), FtrEncodeAVCVdenc))
@@ -1412,7 +1433,7 @@ VAStatus MediaLibvaCaps::LoadAvcEncLpProfileEntrypoints()
 
         for (int32_t i = 0; i < 3; i++)
         {
-            uint32_t configStartIdx = m_encConfigs.size();
+            configStartIdx = m_encConfigs.size();
             AddEncConfig(VA_RC_CQP);
 
             if (MEDIA_IS_SKU(&(m_mediaCtx->SkuTable), FtrEnableMediaKernels))
@@ -1430,9 +1451,19 @@ VAStatus MediaLibvaCaps::LoadAvcEncLpProfileEntrypoints()
             AddProfileEntry(profile[i], VAEntrypointEncSliceLP, attributeList,
                     configStartIdx, m_encConfigs.size() - configStartIdx);
         }
-    }
+#ifdef VA_PROFILE_H264_HIGH_10
+        status = CreateEncAttributes(VAProfileH264High10, VAEntrypointEncSliceLP, &attributeList);
+        DDI_CHK_RET(status, "Failed to initialize Caps!");
+        configStartIdx = m_encConfigs.size();
+        for (int32_t j = 0; j < 3; j++)
+        {
+            AddEncConfig(m_encRcMode[j]);
+        }
+        configNum = m_decConfigs.size() - configStartIdx;
+        AddProfileEntry(VAProfileH264High10, VAEntrypointEncSliceLP, attributeList, configStartIdx, configNum);
 #endif
-
+    }
+#endif // #if defined (_AVC_ENCODE_VME_SUPPORTED) || defined (_AVC_ENCODE_VDENC_SUPPORTED)
     return status;
 }
 
@@ -1950,7 +1981,17 @@ VAStatus MediaLibvaCaps::LoadHevcEncProfileEntrypoints()
 #endif
     return status;
 }
+VAStatus MediaLibvaCaps::LoadAVS2DecProfileEntrypoints()
+{
+    VAStatus status = VA_STATUS_SUCCESS;
 
+#if defined (_AVS2_DECODE_SUPPORTED) || defined (VA_PROFILE_AVS2_MAIN_10)
+        LoadDecProfileEntrypoints(VAProfileAVS2Main);
+        LoadDecProfileEntrypoints(VAProfileAVS2Main10);
+#endif
+
+    return status;
+}
 VAStatus MediaLibvaCaps::LoadNoneProfileEntrypoints()
 {
     VAStatus status = VA_STATUS_SUCCESS;
@@ -3149,7 +3190,17 @@ bool MediaLibvaCaps::IsJpegProfile(VAProfile profile)
 {
     return (profile == VAProfileJPEGBaseline);
 }
-
+bool MediaLibvaCaps::IsAvs2Profile(VAProfile profile)
+{
+#ifdef VA_PROFILE_AVS2_MAIN_10
+    return (
+            (profile == VAProfileAVS2Main) ||
+            (profile == VAProfileAVS2Main10)
+           );
+#else
+    return false;
+#endif
+}
 bool MediaLibvaCaps::IsEncFei(VAEntrypoint entrypoint, uint32_t feiFunction)
 {
     if ((feiFunction & VA_FEI_FUNCTION_ENC_PAK)  ||
@@ -3293,6 +3344,11 @@ std::string MediaLibvaCaps::GetDecodeCodecKey(VAProfile profile)
 {
     switch (profile)
     {
+#ifdef VA_PROFILE_AVS2_MAIN_10
+        case VAProfileAVS2Main:
+        case VAProfileAVS2Main10:
+            return DECODE_ID_AVS2;
+#endif
 #ifdef VA_PROFILE_H264_HIGH_10
         case VAProfileH264High10:
 #endif

@@ -157,21 +157,21 @@ EncodeTestConfig::EncodeTestConfig()
     m_mapPlatformFeatureID[DeviceConfigTable[igfxSKLAKE]]     = {
 #ifdef CNM_FPGA_PLATFORM
 #else
-        TEST_Intel_Encode_HEVC,
-        TEST_Intel_Encode_AVC ,
+        // TEST_Intel_Encode_HEVC,
+        // TEST_Intel_Encode_AVC ,
 #endif
     };
     m_mapPlatformFeatureID[DeviceConfigTable[igfxBROXTON]]    = {
 #ifdef CNM_FPGA_PLATFORM
 #else
-        TEST_Intel_Encode_HEVC,
-        TEST_Intel_Encode_AVC ,
+        // TEST_Intel_Encode_HEVC,
+        // TEST_Intel_Encode_AVC ,
 #endif
     };
     m_mapPlatformFeatureID[DeviceConfigTable[igfxBROADWELL]]  = {
 #ifdef CNM_FPGA_PLATFORM
 #else
-        TEST_Intel_Encode_AVC ,
+        // TEST_Intel_Encode_AVC ,
 #endif
     };
 }

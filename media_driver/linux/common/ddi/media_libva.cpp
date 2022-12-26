@@ -446,10 +446,19 @@ static void VpuApiCapInit()
     i++;
     capMap[i].profile = VAProfileH264High10;
     capMap[i].entrypoint[0] = VAEntrypointVLD;
-    capMap[i].sizeOfEntrypoints = 1;
-    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
-    decConfigId++;
-    j = j + numAttr;
+    capMap[i].entrypoint[1] = VAEntrypointEncSlice;
+    capMap[i].entrypoint[2] = VAEntrypointEncSliceLP;
+    capMap[i].sizeOfEntrypoints = 3;
+    for (k=0; k < capMap[i].sizeOfEntrypoints; k++)  {
+        if (capMap[i].entrypoint[k] == VAEntrypointVLD) {
+            numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+            decConfigId++;
+        } else {
+            numAttr = vpuApiCapInitEncAttributes(capMap[i].profile, capMap[i].entrypoint[k], VPUAPI_ENCODER_CONFIG_ID_START+encConfigId, &attrMap[j]);
+            encConfigId++;
+        }
+        j = j + numAttr;
+    }
 #endif
 
     i++;
@@ -534,6 +543,24 @@ static void VpuApiCapInit()
     numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
     decConfigId++;
     j = j + numAttr;
+
+#ifdef VA_PROFILE_AVS2_MAIN_10
+    i++;
+    capMap[i].profile = VAProfileAVS2Main;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+
+    i++;
+    capMap[i].profile = VAProfileAVS2Main10;
+    capMap[i].entrypoint[0] = VAEntrypointVLD;
+    capMap[i].sizeOfEntrypoints = 1;
+    numAttr = vpuApiCapInitDecAttributes(capMap[i].profile, capMap[i].entrypoint[0], VPUAPI_DECODER_CONFIG_ID_START+decConfigId, &attrMap[j]);
+    decConfigId++;
+    j = j + numAttr;
+#endif
 
     s_sizeOfVpuApiCapMap = i+1;
     s_sizeOfVpuApiAttrMap = j;
@@ -642,7 +669,11 @@ static VAStatus  VpuApiCapQuerySurfaceAttributes(
     if (entrypoint == VAEntrypointVLD)    /* vld */
     {
 #ifdef VA_PROFILE_H264_HIGH_10
+#ifdef VA_PROFILE_AVS2_MAIN_10
+        if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2 || profile == VAProfileH264High10 || profile == VAProfileAVS2Main10) {
+#else
         if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2 || profile == VAProfileH264High10) {
+#endif
 #else
         if (profile == VAProfileHEVCMain10 || profile == VAProfileVP9Profile2) {
 #endif
@@ -1840,6 +1871,12 @@ static VAStatus VpuApiDecOpen(
     case VAProfileAV1Profile1:
         bitFormat = STD_AV1;
         break;
+#ifdef VA_PROFILE_AVS2_MAIN_10
+    case VAProfileAVS2Main:
+    case VAProfileAVS2Main10:
+        bitFormat = STD_AVS2;
+        break;
+#endif
     default:
         printf("[CNM_VPUAPI] not supported profile=0x%x\n", profile);
         return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -2543,6 +2580,10 @@ static VAStatus VpuApiEncOpen(
         return VA_STATUS_ERROR_RESOLUTION_NOT_SUPPORTED;
 
     switch (profile) {
+#ifdef VA_PROFILE_H264_HIGH_10
+    case VAProfileH264High10:
+        bitDepth = 10;
+#endif
     case VAProfileH264High:
     case VAProfileH264Main:
     case VAProfileH264ConstrainedBaseline:
@@ -5479,7 +5520,9 @@ VAStatus DdiMedia_CreateConfig (
                         found_config_id = s_vpuApiAttrs[i].configId;
                         if (s_vpuApiAttrs[i].actual_entrypoint == VAEntrypointEncSlice || s_vpuApiAttrs[i].actual_entrypoint == VAEntrypointEncSliceLP) {
                             if (attrib_list[j].type == VAConfigAttribRateControl) {
+#ifdef CNM_VPUAPI_INTERFACE
                                 mediaCtx->rcMode = attrib_list[j].value;
+#endif
                             }
                         }
 #ifdef USE_INTEL_CONFIG_ID
@@ -5520,9 +5563,13 @@ VAStatus DdiMedia_CreateConfig (
 
     if (*config_id >= VPUAPI_ENCODER_CONFIG_ID_START &&
         *config_id < VPUAPI_MAX_CONFIG_ID) {
+#ifdef CNM_VPUAPI_INTERFACE
         mediaCtx->coreIdx = 1;
+#endif
     } else {
+#ifdef CNM_VPUAPI_INTERFACE
         mediaCtx->coreIdx = 0;
+#endif
     }
 #ifdef CNM_FPGA_PLATFORM
     mediaCtx->coreIdx = 0;
@@ -7564,7 +7611,6 @@ VAStatus DdiMedia_SyncSurface (
         } while (FindUsedRenderTarget(mediaCtx, render_target));
     }
 #endif
-
     if (surface->pCurrentFrameSemaphore)
     {
         DdiMediaUtil_WaitSemaphore(surface->pCurrentFrameSemaphore);
@@ -7581,7 +7627,12 @@ VAStatus DdiMedia_SyncSurface (
     }
 
     MOS_TraceEventExt(EVENT_VA_SYNC, EVENT_TYPE_END, nullptr, 0, nullptr, 0);
+#ifdef GREGORY_REMOVE
+    DdiMedia_StatusCheck(mediaCtx, surface, render_target);
+    return VA_STATUS_SUCCESS;
+#else
     return DdiMedia_StatusCheck(mediaCtx, surface, render_target);
+#endif
 }
 
 #if VA_CHECK_VERSION(1, 9, 0)

@@ -55,7 +55,11 @@
 
 #ifdef CNM_VPUAPI_INTERFACE_CAP
 #ifdef VA_PROFILE_H264_HIGH_10
+#   ifdef VA_PROFILE_AVS2_MAIN_10
+        #define VPUAPI_MAX_PROFILE 34 // added for VAProfileAVS2Main and VAProfileAVS2Main10
+#   else
 #define VPUAPI_MAX_PROFILE 32
+#   endif
 #else
 #define VPUAPI_MAX_PROFILE 31
 #endif //VA_PROFILE_H264_HIGH_10

@@ -428,6 +428,17 @@ public:
     static bool IsVp9Profile(VAProfile profile);
 
     //!
+    //! \brief    Check if the give profile is AVS2
+    //!
+    //! \param    [in] profile
+    //!           Specify the VAProfile
+    //!
+    //! \return   True if the profile is a AVS2 profile
+    //!           False if the profile isn't a AVS2 profile
+    //!
+    static bool IsAvs2Profile(VAProfile profile);
+
+    //!
     //! \brief    Check if the give profile is JPEG
     //!
     //! \param    [in] profile
@@ -1184,6 +1195,11 @@ protected:
     //! \brief    Initialize HEVC encode profiles, entrypoints and attributes
     //!
     virtual VAStatus LoadHevcEncProfileEntrypoints();
+
+    //!
+    //! \brief    Initialize AVS2 decode profiles, entrypoints and attributes
+    //!
+    virtual VAStatus LoadAVS2DecProfileEntrypoints();
 
     //!
     //! \brief    Initialize none profiles, entrypoints and attributes

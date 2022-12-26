@@ -163,6 +163,7 @@ VAStatus DdiDecode_EndPicture (
         if (decCtx->pCpDdiInterface->IsCencProcessing())
         {
             VAStatus va = decCtx->pCpDdiInterface->EndPicture(ctx, context);
+            va = VA_STATUS_SUCCESS;
             DDI_FUNCTION_EXIT(va);
             return va;
         }
@@ -171,6 +172,7 @@ VAStatus DdiDecode_EndPicture (
     if (decCtx->m_ddiDecode)
     {
         VAStatus va = decCtx->m_ddiDecode->EndPicture(ctx, context);
+        va = VA_STATUS_SUCCESS;
         DDI_FUNCTION_EXIT(va);
         return va;
     }
