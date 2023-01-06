@@ -1027,6 +1027,12 @@ VAStatus MediaLibvaCaps::CreateDecAttributes(
         // at present, latest libva have not support RGB24.
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422 | VA_RT_FORMAT_YUV444 | VA_RT_FORMAT_YUV400 | VA_RT_FORMAT_YUV411 | VA_RT_FORMAT_RGB16 | VA_RT_FORMAT_RGB32;
     }
+#ifdef VA_PROFILE_AVS_DEFINED
+    else if(profile == VAProfileAVSJizhun || profile == VAProfileAVSGuangdian)
+    {
+        attrib.value = VA_RT_FORMAT_YUV420;
+    }
+#endif
     else if(profile == VAProfileHEVCMain10)
     {
         attrib.value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10;
@@ -1928,7 +1934,17 @@ VAStatus MediaLibvaCaps::LoadHevcEncProfileEntrypoints()
 #endif
     return status;
 }
+VAStatus MediaLibvaCaps::LoadAVSDecProfileEntrypoints()
+{
+    VAStatus status = VA_STATUS_SUCCESS;
 
+#if defined (_AVS_DECODE_SUPPORTED) || defined (VA_PROFILE_AVS_DEFINED)
+        LoadDecProfileEntrypoints(VAProfileAVSJizhun);
+        LoadDecProfileEntrypoints(VAProfileAVSGuangdian);
+#endif
+
+    return status;
+}
 VAStatus MediaLibvaCaps::LoadNoneProfileEntrypoints()
 {
     VAStatus status = VA_STATUS_SUCCESS;
@@ -3265,6 +3281,11 @@ std::string MediaLibvaCaps::GetDecodeCodecKey(VAProfile profile)
 {
     switch (profile)
     {
+#ifdef VA_PROFILE_AVS_DEFINED
+        case VAProfileAVSJizhun:
+        case VAProfileAVSGuangdian:
+            return DECODE_ID_AVS;
+#endif
         case VAProfileH264High:
         case VAProfileH264Main:
         case VAProfileH264ConstrainedBaseline:

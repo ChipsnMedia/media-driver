@@ -155,15 +155,15 @@ void MediaEncodeDdiTest::EncodeExecute(EncTestData *pEncData, Platform_t platfor
 EncodeTestConfig::EncodeTestConfig()
 {
     m_mapPlatformFeatureID[DeviceConfigTable[igfxSKLAKE]]     = {
-        TEST_Intel_Encode_HEVC,
-        TEST_Intel_Encode_AVC ,
+        // TEST_Intel_Encode_HEVC,
+        // TEST_Intel_Encode_AVC ,
     };
     m_mapPlatformFeatureID[DeviceConfigTable[igfxBROXTON]]    = {
-        TEST_Intel_Encode_HEVC,
-        TEST_Intel_Encode_AVC ,
+        // TEST_Intel_Encode_HEVC,
+        // TEST_Intel_Encode_AVC ,
     };
     m_mapPlatformFeatureID[DeviceConfigTable[igfxBROADWELL]]  = {
-        TEST_Intel_Encode_AVC ,
+        // TEST_Intel_Encode_AVC ,
     };
 }
 

@@ -139,6 +139,7 @@ enum CODECHAL_STANDARD
     CODECHAL_JPEG       = 3,
     CODECHAL_RESERVED   = 4,    //formerly SVC
     CODECHAL_VP8        = 5,
+    CODECHAL_AVS        = 7,
     CODECHAL_UNDEFINED  = 9,
 
     // Cenc Decode
@@ -172,7 +173,7 @@ enum CODECHAL_MODE
     CODECHAL_DECODE_MODE_VP8VLD             = 7,
     CODECHAL_DECODE_MODE_HEVCVLD            = 8,
     CODECHAL_DECODE_MODE_HUC                = 9,
-    CODECHAL_DECODE_RESERVED_2              = 10,   // formerly AVS
+    CODECHAL_DECODE_MODE_AVSVLD              = 10,   // formerly AVS
     CODECHAL_DECODE_MODE_MVCVLD             = 11,   // Needed for CP. Not in use by Codec HAL.
     CODECHAL_DECODE_MODE_VP9VLD             = 12,
     CODECHAL_DECODE_MODE_CENC               = 13,   // Only for getting HuC-based DRM command size. Not an actual mode.
@@ -444,6 +445,7 @@ typedef enum _CODECHAL_CHROMA_SUBSAMPLING
     (mode == CODECHAL_DECODE_MODE_JPEG)         ||  \
     (mode == CODECHAL_DECODE_MODE_VP8VLD)       ||  \
     (mode == CODECHAL_DECODE_MODE_HEVCVLD)      ||  \
+    (mode == CODECHAL_DECODE_MODE_AVSVLD)       ||  \
     (mode == CODECHAL_DECODE_MODE_VP9VLD))
 
 #define CodecHalIsDecodeModeIT(mode)                \
@@ -600,6 +602,9 @@ static __inline uint32_t CodecHal_GetStandardFromMode(uint32_t mode)
         break;
     case CODECHAL_DECODE_MODE_CENC:
         standard = CODECHAL_CENC;
+        break;
+    case CODECHAL_DECODE_MODE_AVSVLD:
+        standard = CODECHAL_AVS;
         break;
     default:
         standard = CODECHAL_UNDEFINED;

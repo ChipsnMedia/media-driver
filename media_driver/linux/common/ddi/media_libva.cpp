@@ -1528,6 +1528,12 @@ static VAStatus VpuApiDecOpen(
     case VAProfileH263Baseline:
         bitFormat = STD_H263;
         break;
+#ifdef VA_PROFILE_AVS_DEFINED
+    case VAProfileAVSJizhun:
+    case VAProfileAVSGuangdian:
+        bitFormat = STD_AVS;
+        break;
+#endif
     default:
         printf("[CNM_VPUAPI] not supported profile=0x%x\n", profile);
         return VA_STATUS_ERROR_OPERATION_FAILED;

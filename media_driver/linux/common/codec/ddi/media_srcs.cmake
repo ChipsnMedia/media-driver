@@ -71,7 +71,16 @@ if(${JPEG_Decode_Supported} STREQUAL "yes")
         ${CMAKE_CURRENT_LIST_DIR}/media_ddi_decode_jpeg.h
     )
 endif()
-
+if(${AVS_Decode_Supported} STREQUAL "yes")
+    set(TMP_2_SOURCES_
+        ${TMP_2_SOURCES_}
+        ${CMAKE_CURRENT_LIST_DIR}/media_ddi_decode_avs.cpp
+    )
+    set(TMP_2_HEADERS_
+        ${TMP_2_HEADERS_}
+        ${CMAKE_CURRENT_LIST_DIR}/media_ddi_decode_avs.h
+    )
+endif()
 if(${MPEG2_Decode_Supported} STREQUAL "yes")
     set(TMP_2_SOURCES_
         ${TMP_2_SOURCES_}

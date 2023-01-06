@@ -439,6 +439,16 @@ public:
     static bool IsJpegProfile(VAProfile profile);
 
     //!
+    //! \brief    Check if the give profile is AVS
+    //!
+    //! \param    [in] profile
+    //!           Specify the VAProfile
+    //!
+    //! \return   True if the profile is a AVS profile
+    //!           False if the profile isn't a AVS profile
+    //!
+    static bool IsAvsProfile(VAProfile profile);
+
     //! \brief    Check if current FeiFuncton or give entrypoint is FEI
     //!
     //! \param    [in] entrypoint
@@ -1184,6 +1194,11 @@ protected:
     //! \brief    Initialize HEVC encode profiles, entrypoints and attributes
     //!
     virtual VAStatus LoadHevcEncProfileEntrypoints();
+
+    //!
+    //! \brief    Initialize AVS decode profiles, entrypoints and attributes
+    //!
+    virtual VAStatus LoadAVSDecProfileEntrypoints();
 
     //!
     //! \brief    Initialize none profiles, entrypoints and attributes
