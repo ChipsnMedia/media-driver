@@ -1127,6 +1127,20 @@ static void* ConvertBufferData(
             }
             break;
         }
+#ifdef VA_PROFILE_AVS2_MAIN_10
+        case STD_AVS2:
+        {
+            if (type == VAPictureParameterBufferType) {
+                VAPictureParameterBufferAVS2* picParam = (VAPictureParameterBufferAVS2*)convData;
+                picParam->CurrPic.surface_id = GetRenderTargetIndex(mediaCtx, picParam->CurrPic.surface_id);
+                for (int32_t i = 0; i < VA_AVS2_MAX_REF_COUNT; i++) {
+                    if (picParam->ref_list[i].surface_id != VA_INVALID_SURFACE)
+                        picParam->ref_list[i].surface_id = GetRenderTargetIndex(mediaCtx, picParam->ref_list[i].surface_id);
+                }
+            }
+            break;
+        }
+#endif
         default:
             break;
     }
@@ -1517,7 +1531,7 @@ static VAStatus VpuApiInit(
 
     // if (!VPU_IsInit(coreIdx)) 
     {
-        printf("[CNM_VPUAPI] Start HW INIT.\n");
+        printf("[CNM_VPUAPI] Start HW INIT. GREGORY\n");
 #ifdef CNM_FPGA_PLATFORM
         vdi_hw_reset(coreIdx);
         osal_msleep(1000); // Waiting for stable state
