@@ -186,6 +186,7 @@ enum CODECHAL_MODE
     CODECHAL_ENCODE_MODE_JPEG               = 20,
     CODECHAL_ENCODE_MODE_HEVC               = 22,
     CODECHAL_ENCODE_MODE_VP9                = 23,
+    CODECHAL_ENCODE_MODE_AV1                = 24,
     CODECHAL_ENCODE_RESERVED_0              = 24,
     CODECHAL_NUM_ENCODE_MODES               = 8,
 

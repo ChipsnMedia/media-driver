@@ -37,6 +37,7 @@
 #include <va/va_enc_vp8.h>
 #include <va/va_dec_vp9.h>
 #include <va/va_enc_hevc.h>
+#include <va/va_enc_av1.h>
 #include <va/va_vpp.h>
 #include <va/va_backend_vpp.h>
 #if VA_CHECK_VERSION(1,11,0)

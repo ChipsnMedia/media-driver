@@ -70,6 +70,7 @@ bs_set_if_undefined(Media_Scalability_Supported "yes")
 bs_set_if_undefined(AVC_Encode_VDEnc_Supported "${Encode_VDEnc_Supported}")
 bs_set_if_undefined(HEVC_Encode_VDEnc_Supported "${Encode_VDEnc_Supported}")
 bs_set_if_undefined(VP9_Encode_VDEnc_Supported "${Encode_VDEnc_Supported}")
+bs_set_if_undefined(AV1_Encode_VDEnc_Supported "${Encode_VDEnc_Supported}")
 bs_set_if_undefined(JPEG_Encode_Supported "${Encode_VDEnc_Supported}")
 
 if(${Common_Encode_Supported} STREQUAL "yes")

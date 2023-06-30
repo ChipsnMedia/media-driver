@@ -67,6 +67,8 @@ std::vector<FeatureID> refFeatureIDTable_BXT = {
 #endif
     { VAProfileVP9Profile2            , VAEntrypointVLD                 },
     { VAProfileAV1Profile0            , VAEntrypointVLD                 },
+    { VAProfileAV1Profile0               , VAEntrypointEncSlice            },
+    { VAProfileAV1Profile0               , VAEntrypointEncSliceLP          },
     { VAProfileAV1Profile1            , VAEntrypointVLD                 },
 #ifdef VA_PROFILE_AVS2_MAIN_10
     { VAProfileAVS2Main            , VAEntrypointVLD                 },

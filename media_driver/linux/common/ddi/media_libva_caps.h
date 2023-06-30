@@ -766,6 +766,7 @@ protected:
         AVC = 0,
         HEVC,
         VP9,
+        AV1,
         Others = 0xff,
     };
 
