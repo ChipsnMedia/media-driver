@@ -2320,7 +2320,7 @@ static VAStatus VpuApiDecGetResult(
     {
         printf("[CNM_VPUAPI] Warning Error Block: %d\n", outputInfo.numOfErrMBs);
     }
-    printf("[CNM_VPUAPI] IDX %d | SURFACE %d | PIC %d | NAL %d | BufAddrY : 0x%x | BufAddrCb : 0x%x | BufAddrCr : 0x%x | vaParamAddr : 0x%x | BYTEPOS 0x%x ~ 0x%x | CONSUME : %d | DISP %dx%d\n",
+    printf("[CNM_VPUAPI] IDX %d | SURFACE %d | PIC %d | NAL %d | BufAddrY : 0x%lx | BufAddrCb : 0x%lx | BufAddrCr : 0x%lx | vaParamAddr : 0x%lx | BYTEPOS 0x%lx ~ 0x%lx | CONSUME : %ld | DISP %dx%d\n",
            mediaCtx->decIdx,
            surfaceID,
            outputInfo.picType, outputInfo.nalType,
@@ -3395,21 +3395,21 @@ static VAStatus VpuApiEncPic(
     printf("[CNM_VPUAPI] packedSliceParamNum: %d\n", vaInfo.packedSliceParamNum);
     printf("[CNM_VPUAPI] packedSeiParamNum: %d\n", vaInfo.packedSeiParamNum);
     printf("[CNM_VPUAPI] miscEnable: %d\n", vaInfo.miscEnable);
-    printf("[CNM_VPUAPI] seqParamBufAddr: 0x%x\n", vaInfo.seqParamBufAddr);
-    printf("[CNM_VPUAPI] picParamBufAddr: 0x%x\n", vaInfo.picParamBufAddr);
-    printf("[CNM_VPUAPI] sliceParamBufAddr: 0x%x\n", vaInfo.sliceParamBufAddr);
-    printf("[CNM_VPUAPI] packedParamBufAddr: 0x%x\n", vaInfo.packedParamBufAddr);
-    printf("[CNM_VPUAPI] packedParamDataBufAddr: 0x%x\n", vaInfo.packedParamDataBufAddr);
-    printf("[CNM_VPUAPI] miscFrameRateBufAddr: 0x%x\n", vaInfo.miscFrameRateBufAddr);
-    printf("[CNM_VPUAPI] miscRateControlBufAddr: 0x%x\n", vaInfo.miscRateControlBufAddr);
-    printf("[CNM_VPUAPI] miscHrdBufAddr: 0x%x\n", vaInfo.miscHrdBufAddr);
+    printf("[CNM_VPUAPI] seqParamBufAddr: 0x%lx\n", vaInfo.seqParamBufAddr);
+    printf("[CNM_VPUAPI] picParamBufAddr: 0x%lx\n", vaInfo.picParamBufAddr);
+    printf("[CNM_VPUAPI] sliceParamBufAddr: 0x%lx\n", vaInfo.sliceParamBufAddr);
+    printf("[CNM_VPUAPI] packedParamBufAddr: 0x%lx\n", vaInfo.packedParamBufAddr);
+    printf("[CNM_VPUAPI] packedParamDataBufAddr: 0x%lx\n", vaInfo.packedParamDataBufAddr);
+    printf("[CNM_VPUAPI] miscFrameRateBufAddr: 0x%lx\n", vaInfo.miscFrameRateBufAddr);
+    printf("[CNM_VPUAPI] miscRateControlBufAddr: 0x%lx\n", vaInfo.miscRateControlBufAddr);
+    printf("[CNM_VPUAPI] miscHrdBufAddr: 0x%lx\n", vaInfo.miscHrdBufAddr);
     printf("[CNM_VPUAPI] reconTarget: %d\n", reconTargetIdx);
-    printf("[CNM_VPUAPI] fbcYBufAddr: 0x%x\n", vaInfo.fbcYBufAddr);
-    printf("[CNM_VPUAPI] fbcCBufAddr: 0x%x\n", vaInfo.fbcCBufAddr);
-    printf("[CNM_VPUAPI] fbcYOffsetBufAddr: 0x%x\n", vaInfo.fbcYOffsetBufAddr);
-    printf("[CNM_VPUAPI] fbcCOffsetBufAddr: 0x%x\n", vaInfo.fbcCOffsetBufAddr);
-    printf("[CNM_VPUAPI] mvColBufAddr: 0x%x\n", vaInfo.mvColBufAddr);
-    printf("[CNM_VPUAPI] subSampledBufAddr: 0x%x\n", vaInfo.subSampledBufAddr);
+    printf("[CNM_VPUAPI] fbcYBufAddr: 0x%lx\n", vaInfo.fbcYBufAddr);
+    printf("[CNM_VPUAPI] fbcCBufAddr: 0x%lx\n", vaInfo.fbcCBufAddr);
+    printf("[CNM_VPUAPI] fbcYOffsetBufAddr: 0x%lx\n", vaInfo.fbcYOffsetBufAddr);
+    printf("[CNM_VPUAPI] fbcCOffsetBufAddr: 0x%lx\n", vaInfo.fbcCOffsetBufAddr);
+    printf("[CNM_VPUAPI] mvColBufAddr: 0x%lx\n", vaInfo.mvColBufAddr);
+    printf("[CNM_VPUAPI] subSampledBufAddr: 0x%lx\n", vaInfo.subSampledBufAddr);
 #ifdef FAKE_VPUAPI
     mediaCtx->encIdx++;
 #else
@@ -3500,19 +3500,19 @@ static VAStatus VpuApiEncPic(
     param.picStreamBufferAddr = mediaCtx->bsBuf[0].phys_addr;
     param.picStreamBufferSize = mediaCtx->bsBuf[0].size;
 
-    printf("[CNM_VPUAPI] bsBuf: 0x%x\n", param.picStreamBufferAddr);
+    printf("[CNM_VPUAPI] bsBuf: 0x%lx\n", param.picStreamBufferAddr);
     printf("[CNM_VPUAPI] bsSize: %d\n", param.picStreamBufferSize);
     printf("[CNM_VPUAPI] renderTarget: %d\n", renderTargetIdx);
     printf("[CNM_VPUAPI] srcStride: %d\n", param.sourceFrame->stride);
-    printf("[CNM_VPUAPI] srcBufY: 0x%x\n", param.sourceFrame->bufY);
-    printf("[CNM_VPUAPI] srcBufCb: 0x%x\n", param.sourceFrame->bufCb);
-    printf("[CNM_VPUAPI] srcBufCr: 0x%x\n", param.sourceFrame->bufCr);
+    printf("[CNM_VPUAPI] srcBufY: 0x%lx\n", param.sourceFrame->bufY);
+    printf("[CNM_VPUAPI] srcBufCb: 0x%lx\n", param.sourceFrame->bufCb);
+    printf("[CNM_VPUAPI] srcBufCr: 0x%lx\n", param.sourceFrame->bufCr);
 
     if (mediaCtx->miscParamEnable & (1 << VAEncMiscParameterTypeROI))
     {
         UpdateEncROIBuffer(mediaCtx, reconTargetIdx);
         param.customMapOpt.customRoiMapEnable = TRUE;
-        param.customMapOpt.addrCustomMap = mediaCtx->roiBufMem[reconTargetIdx].phys_addr;
+        param.customMapOpt.customMapAddr = mediaCtx->roiBufMem[reconTargetIdx].phys_addr;
     }
     mediaCtx->encIdx++;
     if ((ret = VPU_EncStartOneFrame(hdl, &param)) != RETCODE_SUCCESS)
@@ -3545,7 +3545,7 @@ static VAStatus VpuApiEncPic(
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
-    printf("[CNM_VPUAPI] IDX %d | PIC %d | RDPTR : 0x%x | WRPTR : 0x%x | BYTES : 0x%x\n",
+    printf("[CNM_VPUAPI] IDX %d | PIC %d | RDPTR : 0x%lx | WRPTR : 0x%lx | BYTES : 0x%x\n",
            mediaCtx->encIdx,
            outputInfo.picType, outputInfo.rdPtr, outputInfo.wrPtr, outputInfo.bitstreamSize);
 
