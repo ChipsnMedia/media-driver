@@ -1671,6 +1671,9 @@ static VAStatus VpuApiInit(
     char fwPath[100];
     RetCode ret = RETCODE_SUCCESS;
 
+#if defined(SUPPORT_CONF_TEST) || (defined(WAVE6_CODEC_NATIVE_40BIT) && defined(CNM_SIM_DPI_INTERFACE))
+    InitQC();
+#endif
     vdi_init(coreIdx);
     vdi_vaapi_driver_lock(coreIdx);
 
@@ -1713,6 +1716,7 @@ static VAStatus VpuApiInit(
         strcpy(fwPath, "/usr/local/lib/vincent.bin");
         break;
     case PRODUCT_ID_627:
+    case PRODUCT_ID_637:
         strcpy(fwPath, "/usr/local/lib/seurat.bin");
         break;
     default:
@@ -2000,6 +2004,35 @@ static VAStatus VpuApiDecRenderPicture(
     return va;
 }
 
+static BOOL VpuApiAllocateworkBuffer(int32_t coreIdx, vpu_buffer_t *vbWork) {
+    vbWork->phys_addr = 0;
+    vbWork->size = (Uint32)WAVE637DEC_WORKBUF_SIZE_FOR_CQ;
+
+    if (vdi_allocate_dma_memory(coreIdx, vbWork, DEC_WORK, 0) < 0)
+        return FALSE;
+
+    return TRUE;
+}
+
+static BOOL VpuApiAllocateTempBuffer(int32_t coreIdx, vpu_buffer_t *vbTemp)
+{
+    vbTemp->phys_addr = 0;
+    vbTemp->size  = VPU_ALIGN4096(WAVE6_TEMPBUF_SIZE_FOR_CQ);
+    
+    if (vdi_allocate_dma_memory(coreIdx, vbTemp, DEC_TEMP, 0) < 0)
+        return FALSE;
+
+    return TRUE;
+}
+
+static BOOL VpuApiAllocateSecAxiBuffer(int32_t coreIdx, vpu_buffer_t *vbSecAxi)
+{
+    if (vdi_get_sram_memory(coreIdx, vbSecAxi) < 0)
+        return FALSE;
+
+    return TRUE;
+}
+
 static VAStatus VpuApiDecOpen(
     VADriverContextP ctx,
     VAConfigID configId,
@@ -2088,9 +2121,33 @@ static VAStatus VpuApiDecOpen(
     mediaCtx->decOP.vaEnable = TRUE;
     mediaCtx->decOP.bitstreamBuffer = 0;     // if bitstreamMode is BS_MODE_PIC_END. this value should be 0
     mediaCtx->decOP.bitstreamBufferSize = 0; // if bitstreamMode is BS_MODE_PIC_END. this value should be 0
+   
+    mediaCtx->decOP.numUseVcore = 1;
+    mediaCtx->decOP.vcoreCoreIdc = 1;
 #ifdef FAKE_VPUAPI
     mediaCtx->decHandle = s_decHandle;
 #else
+    mediaCtx->decOP.displayMode = DISP_MODE_DEC_ORDER; 
+
+    VpuApiAllocateworkBuffer(mediaCtx->coreIdx, &mediaCtx->vbWork);
+    mediaCtx->decOP.instBuffer.workBufBase = mediaCtx->vbWork.phys_addr;
+    mediaCtx->decOP.instBuffer.workBufSize = mediaCtx->vbWork.size;
+
+    VpuApiAllocateTempBuffer(mediaCtx->coreIdx, &mediaCtx->vbTemp);
+    mediaCtx->decOP.instBuffer.tempBufBase = mediaCtx->vbTemp.phys_addr;
+    mediaCtx->decOP.instBuffer.tempBufSize = mediaCtx->vbTemp.size;
+
+    VpuApiAllocateSecAxiBuffer(mediaCtx->coreIdx, &mediaCtx->vbSecAxi);
+#ifdef SUPPORT_MULTI_VCORE
+    mediaCtx->decOP.instBuffer.secAxiBufBaseCore0 = mediaCtx->vbSecAxi.phys_addr;
+    mediaCtx->decOP.instBuffer.secAxiBufSizeCore0 = mediaCtx->vbSecAxi.size/2;
+    mediaCtx->decOP.instBuffer.secAxiBufBaseCore1 = mediaCtx->vbSecAxi.phys_addr;
+    mediaCtx->decOP.instBuffer.secAxiBufSizeCore1 = mediaCtx->vbSecAxi.size/2;
+#else
+    mediaCtx->decOP.instBuffer.secAxiBufBaseCore0 = mediaCtx->vbSecAxi.phys_addr;
+    mediaCtx->decOP.instBuffer.secAxiBufSizeCore0 = mediaCtx->vbSecAxi.size;
+#endif
+
     retCode = VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP);
     if (retCode != RETCODE_SUCCESS)
     {
@@ -2550,13 +2607,24 @@ static void VpuApiDecClose(
 #endif
 #endif
 
+    if(mediaCtx->vbWork.size) {
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->vbWork, DEC_WORK, 0);
+        mediaCtx->vbWork.size = 0;
+        mediaCtx->vbWork.phys_addr = 0UL;
+    }
+
+    if(mediaCtx->vbTemp.size) {
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->vbTemp, DEC_TEMP, 0);
+        mediaCtx->vbTemp.size = 0;
+        mediaCtx->vbTemp.phys_addr = 0UL;        
+    }
+
     DdiMediaUtil_DestroyMutex(&mediaCtx->vpuapiMutex);
 
     DdiMediaUtil_LockMutex(&mediaCtx->DecoderMutex);
     DdiMediaUtil_ReleasePVAContextFromHeap(mediaCtx->pDecoderCtxHeap, decIndex);
     mediaCtx->uiNumDecoders--;
     DdiMediaUtil_UnLockMutex(&mediaCtx->DecoderMutex);
-
     MOS_FreeMemory(decCtx);
 
     printf("[CNM_VPUAPI] Success Close decoder instance\n");
