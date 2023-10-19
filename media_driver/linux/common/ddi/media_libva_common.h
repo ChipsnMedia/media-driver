@@ -92,6 +92,7 @@ static int32_t atrace_switch            = 0;
 #define VPUAPI_MAX_MISC_TYPE_NUM  20
 #define VPUAPI_MAX_BUF_NUM        5
 #define VPUAPI_UNKNOWN_SURFACE_ID 0xFFFF
+#define MAX_FRAME_NUM                   MAX_REG_FRAME
 #endif
 #ifdef CNM_VPUAPI_INTERFACE_CAP
 #define VPUAPI_MAX_PIC_WIDTH      8192
@@ -614,6 +615,7 @@ struct DDI_MEDIA_CONTEXT
     vpu_buffer_t      mvColBufMem[VPUAPI_MAX_FB_NUM];
     vpu_buffer_t      subSampledBufMem[VPUAPI_MAX_FB_NUM];
     vpu_buffer_t      roiBufMem[VPUAPI_MAX_FB_NUM];
+    vpu_buffer_t      vbAux[AUX_BUF_TYPE_MAX][MAX_FRAME_NUM];
     vpu_buffer_t      vbWork;
     vpu_buffer_t      vbTemp;
     vpu_buffer_t      vbSecAxi;    

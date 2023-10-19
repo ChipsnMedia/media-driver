@@ -150,6 +150,7 @@ add_definitions(-DCNM_FPGA_PCI_INTERFACE)
 add_definitions(-DCNM_FPGA_VU19P_INTERFACE)
 add_definitions(-DWAVE677)
 add_definitions(-DSUPPORT_VAAPI_INTERFACE)
+add_definitions(-DWAVE6_DEC_SET_DISP_CMD)
 #add_definitions(-DCNM_VPUAPI_INTERFACE_DEBUG)
 add_definitions(-DCNM_VPUAPI_INTERFACE_CAP)
 #endif
