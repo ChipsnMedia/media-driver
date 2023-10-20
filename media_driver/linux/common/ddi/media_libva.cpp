@@ -2081,6 +2081,8 @@ static VAStatus VpuApiDecRenderPicture(
                 vdi_write_memory(mediaCtx->coreIdx, paramBuf.phys_addr + mediaCtx->paramSize, (Uint8 *)convData, VPU_ALIGN16(size), VDI_LITTLE_ENDIAN);
                 mediaCtx->paramSize += VPU_ALIGN16(size);
                 free(convData);
+
+                printf("[CNM_VPUAPI] type: %d, size: %d/%d, paramSize:%d bufIdx:%d\n",(int32_t)type, size,VPU_ALIGN16(size),mediaCtx->paramSize,mediaCtx->bufIdx);
             }
         }
         break;
@@ -2360,6 +2362,23 @@ static VAStatus VpuApiDecSeqInit(
     VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_FIRST_PARAM_BUFFER, &mediaCtx->paramBuf[mediaCtx->bufIdx].phys_addr);
     VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_WIDTH, &mediaCtx->pictureWidth);
     VPU_DecGiveCommand(hdl, DEC_SET_VAAPI_HEIGHT, &mediaCtx->pictureHeight);
+
+{
+    uint8_t *pParam;
+    int32_t size = sizeof(VAPictureParameterBufferH264);
+    
+    size = VPU_ALIGN16(size);
+    pParam = (uint8_t *)osal_malloc(size);
+    vdi_read_memory(mediaCtx->coreIdx, mediaCtx->paramBuf[mediaCtx->bufIdx].phys_addr, pParam, size, VDI_LITTLE_ENDIAN);
+    VAPictureParameterBufferH264 *h264 = (VAPictureParameterBufferH264 *)pParam;
+
+    printf("[CNM_VPUAPI] width:%d, height:%d, luma:%d, chroma:%d\n",(h264->picture_width_in_mbs_minus1+1)*16, 
+                                                                    (h264->picture_height_in_mbs_minus1+1)*16,
+                                                                    h264->bit_depth_luma_minus8,
+                                                                    h264->bit_depth_chroma_minus8);
+    free(pParam);
+}
+
 
     if ((ret = VPU_DecIssueSeqInit(hdl)) != RETCODE_SUCCESS)
     {
