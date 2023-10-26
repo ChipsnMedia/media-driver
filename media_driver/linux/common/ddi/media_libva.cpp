@@ -1355,13 +1355,17 @@ static void AllocateLinearFrameBuffer(
         mediaCtx->linearFrameBuf[index].bufCr = pVb->phys_addr + fbLumaSize + fbChromaSize;
     else
         mediaCtx->linearFrameBuf[index].bufCr = -1;
+    
+    mediaCtx->linearFrameBuf[index].width = fbWidth;
+    mediaCtx->linearFrameBuf[index].height = fbHeight;
+
 }
 
 static void FreeLinearFrameBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx,
     uint32_t index)
 {
-    // printf("[CNM_VPUAPI] %s index=%d\n", __FUNCTION__, index);
+    printf("[CNM_VPUAPI] %s index=%d\n", __FUNCTION__, index);
     if (mediaCtx->linearFrameBufMem[index].phys_addr != 0)
     {
         vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->linearFrameBufMem[index], DEC_FB_LINEAR, 0);
@@ -2137,6 +2141,67 @@ static BOOL VpuApiAllocateSecAxiBuffer(int32_t coreIdx, vpu_buffer_t *vbSecAxi)
     return TRUE;
 }
 
+static BOOL Wave6xxSetLinearFrameBufferInfo(
+    DecHandle decHandle,
+    PDDI_MEDIA_CONTEXT mediaCtx,
+    FrameBuffer* frame_buffer,
+    DecInitialInfo   seqInfo)
+{
+    Uint32 framebufSize;
+    Uint32 coreIndex;
+    FrameBufferAllocInfo fbAllocInfo;
+    RetCode ret;
+    size_t linearStride;
+    size_t picWidth;
+    size_t picHeight;
+    size_t fbHeight;
+
+    TiledMapType mapType = LINEAR_FRAME_MAP;
+    coreIndex = mediaCtx->coreIdx;
+
+    osal_memset(&fbAllocInfo, 0x00, sizeof(FrameBufferAllocInfo));
+    FrameBufferFormat outFormat = mediaCtx->wtlFormat;
+    frame_buffer->width = seqInfo.picWidth;
+    frame_buffer->height = seqInfo.picHeight;
+    picWidth  = frame_buffer->width;
+    picHeight = (STD_AVC == mediaCtx->decOP.bitstreamFormat) ? VPU_ALIGN16(frame_buffer->height) : VPU_ALIGN8(frame_buffer->height);
+    fbHeight  = picHeight;
+
+    linearStride = VPU_GetFrameBufStride(decHandle, picWidth, picHeight, outFormat, mediaCtx->cbcrInterleave, (TiledMapType)mapType);
+    framebufSize = VPU_GetFrameBufSize(decHandle, coreIndex, linearStride, fbHeight, (TiledMapType)mapType, outFormat, mediaCtx->cbcrInterleave, NULL);
+    frame_buffer->updateFbInfo = TRUE;
+    frame_buffer->size  = framebufSize;
+
+    fbAllocInfo.cbcrInterleave  = mediaCtx->cbcrInterleave;
+    fbAllocInfo.nv21    = mediaCtx->nv21;
+    fbAllocInfo.format  = outFormat;
+    fbAllocInfo.num     = 1;
+    fbAllocInfo.mapType = (TiledMapType)mapType;
+    fbAllocInfo.stride  = linearStride;
+    fbAllocInfo.height  = fbHeight;
+    fbAllocInfo.endian  = mediaCtx->decOP.frameEndian;
+    fbAllocInfo.type = FB_TYPE_CODEC;
+
+    printf("[CNM_VPUAPI] width:%d, height:%d linearStrie:%ld, fbheight:%ld, framebufSize:%d cbcrInterleave:%d nv21:%d\n", 
+                                                                        frame_buffer->width, 
+                                                                        frame_buffer->height, 
+                                                                        linearStride, 
+                                                                        fbHeight, 
+                                                                        framebufSize,
+                                                                        mediaCtx->cbcrInterleave,
+                                                                        mediaCtx->nv21);
+
+    ret = VPU_DecAllocateFrameBuffer(decHandle, fbAllocInfo, frame_buffer);
+    if (ret != RETCODE_SUCCESS) {
+        VLOG(ERR, "%s:%d failed to VPU_DecAllocateFrameBuffer() ret:%d\n",
+            __FUNCTION__, __LINE__, ret);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+
 static VAStatus VpuApiDecOpen(
     VADriverContextP ctx,
     VAConfigID configId,
@@ -2417,17 +2482,24 @@ static VAStatus VpuApiDecSeqInit(
         return VA_STATUS_ERROR_DECODING_ERROR;
     }
 
+    mediaCtx->chromaFormatIDC = seqInfo.chromaFormatIDC;
     mediaCtx->seqInited = seqInited;
 
     printf("[CNM_VPUAPI] SUCCESS VpuApiDecSeqInit\n");
     printf("[CNM_VPUAPI] >>> width : %d | height : %d\n", seqInfo.picWidth, seqInfo.picHeight);
     printf("[CNM_VPUAPI] >>> crop left : %d | top : %d | right : %d | bottom : %d\n", seqInfo.picCropRect.left, seqInfo.picCropRect.top, seqInfo.picCropRect.right, seqInfo.picCropRect.bottom);
-    printf("[CNM_VPUAPI] >>> lumaBitdepth : %d | chromaBitdepth : %d\n", seqInfo.lumaBitdepth, seqInfo.chromaBitdepth);
+    printf("[CNM_VPUAPI] >>> lumaBitdepth : %d | chromaBitdepth : %d | chromaFormatIDC : %d \n", seqInfo.lumaBitdepth, seqInfo.chromaBitdepth, seqInfo.chromaFormatIDC);
     printf("[CNM_VPUAPI] >>> minFrameBufferCount : %d\n", seqInfo.minFrameBufferCount);
     printf("[CNM_VPUAPI] >>> numOfRenderTargets : %d\n", mediaCtx->numOfRenderTargets);
 #endif
     if (AllocateDecFrameBuffer(mediaCtx, seqInfo) != VA_STATUS_SUCCESS)
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
+
+    for(int i=0; i<mediaCtx->numOfRenderTargets; i++) {
+        if(Wave6xxSetLinearFrameBufferInfo(hdl,mediaCtx,&mediaCtx->linearFrameBuf[i],seqInfo) != TRUE) {
+            return VA_STATUS_ERROR_ALLOCATION_FAILED;
+        }
+    }
 
     return VA_STATUS_SUCCESS;
 }
@@ -2443,7 +2515,7 @@ static VAStatus VpuApiDecGetResult(
     Int32 intrFlag = 0;
 
     osal_memset(&outputInfo, 0x00, sizeof(DecOutputInfo));
-
+printf("VpuApiDecGetResult %d \r\n",__LINE__);
     DdiMediaUtil_LockMutex(&mediaCtx->vpuapiMutex);
 
     if (surfaceID == VPUAPI_UNKNOWN_SURFACE_ID)
@@ -2454,6 +2526,7 @@ static VAStatus VpuApiDecGetResult(
 
 #ifdef FAKE_VPUAPI
 #else
+printf("VpuApiDecGetResult %d \r\n",__LINE__);
     intrFlag = VPU_WaitInterruptEx(hdl, VPU_DEC_TIMEOUT);
     if (intrFlag == -1)
     {
@@ -2463,6 +2536,7 @@ static VAStatus VpuApiDecGetResult(
         DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_TIMEDOUT;
     }
+printf("VpuApiDecGetResult %d \r\n",__LINE__);
 
     VPU_ClearInterruptEx(hdl, intrFlag);
     if (intrFlag & (1 << INT_WAVE5_DEC_PIC))
@@ -2474,6 +2548,7 @@ static VAStatus VpuApiDecGetResult(
         DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_DECODING_ERROR;
     }
+printf("VpuApiDecGetResult %d \r\n",__LINE__);
 
     if ((ret = VPU_DecGetOutputInfo(hdl, &outputInfo)) != RETCODE_SUCCESS)
     {
@@ -2481,11 +2556,13 @@ static VAStatus VpuApiDecGetResult(
         DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
+printf("VpuApiDecGetResult %d \r\n",__LINE__);
 
     if (outputInfo.decodingSuccess == 0)
     {
         printf("[CNM_VPUAPI] Decoding Fail: %d, Warning Info: %d\n", outputInfo.decodingSuccess, outputInfo.warnInfo);
     }
+printf("VpuApiDecGetResult %d \r\n",__LINE__);
 
     if (outputInfo.indexFrameDecoded < 0)
     {
@@ -2493,6 +2570,7 @@ static VAStatus VpuApiDecGetResult(
         DdiMediaUtil_UnLockMutex(&mediaCtx->vpuapiMutex);
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
+printf("VpuApiDecGetResult %d \r\n",__LINE__);
 
     if (outputInfo.numOfErrMBs > 0)
     {
@@ -2607,12 +2685,15 @@ static VAStatus VpuApiDecPic(
 
     osal_memset(&param, 0x00, sizeof(DecParam));
 
+    printf("VpuApiDecPic 1 \r\n");
     while (FindUsedRenderTarget(mediaCtx, mediaCtx->renderTarget))
     {
+        printf("VpuApiDecPic 1-1 \r\n");
         VAStatus vaStatus = VpuApiDecGetResult(ctx, GetUsedRenderTarget(mediaCtx));
         if (vaStatus != VA_STATUS_SUCCESS)
             return vaStatus;
     }
+    printf("VpuApiDecPic 2 \r\n");
 #ifdef FAKE_VPUAPI
 #else
     VPU_DecSetRdPtr(hdl, mediaCtx->bsBuf[mediaCtx->bufIdx].phys_addr, TRUE);
@@ -2627,10 +2708,30 @@ static VAStatus VpuApiDecPic(
     param.vaDecodeBufAddrCb = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCb;
     param.vaDecodeBufAddrCr = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCr;
 
+
+{
+    uint8_t *pParam;
+    int32_t size = sizeof(VAPictureParameterBufferH264);
+    
+    size = VPU_ALIGN16(size);
+    pParam = (uint8_t *)osal_malloc(size);
+    vdi_read_memory(mediaCtx->coreIdx, mediaCtx->paramBuf[mediaCtx->bufIdx].phys_addr, pParam, size, VDI_LITTLE_ENDIAN);
+    VAPictureParameterBufferH264 *h264 = (VAPictureParameterBufferH264 *)pParam;
+
+    printf("[CNM_VPUAPI] vaparam addr:%lx, width:%d, height:%d, luma:%d, chroma:%d\n",mediaCtx->paramBuf[mediaCtx->bufIdx].phys_addr,
+                                                                    (h264->picture_width_in_mbs_minus1+1)*16, 
+                                                                    (h264->picture_height_in_mbs_minus1+1)*16,
+                                                                    h264->bit_depth_luma_minus8,
+                                                                    h264->bit_depth_chroma_minus8);
+    free(pParam);
+}
+
+    mediaCtx->linearFrameBuf[param.vaRenderTarget].chromaFormatIDC = mediaCtx->chromaFormatIDC;
+    printf("[CNM_VPUAPI] vaRenderTarget:%d chromaFormatIDC:%d \n",param.vaRenderTarget, mediaCtx->chromaFormatIDC);
     ret = VPU_DecRegisterDisplayBuffer(hdl, mediaCtx->linearFrameBuf[param.vaRenderTarget]);
     if (ret != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] failed to register display buffer : %d \n", ret);
-        return VA_STATUS_ERROR_OPERATION_FAILED;
+        printf("[CNM_VPUAPI] failed to register display buffer : %d,  vaRenderTarget:%d , bufIdx:%d \n", ret,param.vaRenderTarget,mediaCtx->bufIdx);
+        return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 #else
     printf("[CNM_VPUAPI] customer needs to get physical address from render_target surface=0x%x", mediaCtx->renderTarget);
@@ -8173,6 +8274,7 @@ VAStatus DdiMedia_SyncSurface(
     DDI_CHK_NULL(surface, "nullptr surface", VA_STATUS_ERROR_INVALID_CONTEXT);
 
 #ifdef CNM_VPUAPI_INTERFACE
+    printf("DdiMedia_SyncSurface \r\n");
     if (surface->curCtxType == DDI_MEDIA_CONTEXT_TYPE_DECODER)
     {
         do
