@@ -2161,8 +2161,6 @@ static BOOL Wave6xxSetLinearFrameBufferInfo(
 
     osal_memset(&fbAllocInfo, 0x00, sizeof(FrameBufferAllocInfo));
     FrameBufferFormat outFormat = mediaCtx->wtlFormat;
-    frame_buffer->width = seqInfo.picWidth;
-    frame_buffer->height = seqInfo.picHeight;
     picWidth  = frame_buffer->width;
     picHeight = (STD_AVC == mediaCtx->decOP.bitstreamFormat) ? VPU_ALIGN16(frame_buffer->height) : VPU_ALIGN8(frame_buffer->height);
     fbHeight  = picHeight;
