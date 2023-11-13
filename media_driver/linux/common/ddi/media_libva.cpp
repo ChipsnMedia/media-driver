@@ -2133,6 +2133,16 @@ static BOOL VpuApiAllocateTempBuffer(int32_t coreIdx, vpu_buffer_t *vbTemp)
     return TRUE;
 }
 
+static BOOL VpuApiAllocateArTableBuffer(int32_t coreIdx, vpu_buffer_t *vbAr)
+{
+#define WAVE6_AR_TABLE_BUF_SIZE 1024 //adative round
+    vbAr->phys_addr = 0;
+    vbAr->size      = VPU_ALIGN4096(WAVE6_AR_TABLE_BUF_SIZE);
+    if (vdi_allocate_dma_memory(coreIdx, vbAr, ENC_AR, 0) < 0)
+        return FALSE;
+    return TRUE;
+}
+
 static BOOL VpuApiAllocateSecAxiBuffer(int32_t coreIdx, vpu_buffer_t *vbSecAxi)
 {
     if (vdi_get_sram_memory(coreIdx, vbSecAxi) < 0)
@@ -2611,9 +2621,9 @@ printf("VpuApiDecGetResult %d \r\n",__LINE__);
         printf("[CNM_VPUAPI] Dump Linear Frame WxH : %dx%d, wtl_format=%d\n", mediaCtx->linearStride, mediaCtx->linearHeight, mediaCtx->wtlFormat);
         printf("[CNM_VPUAPI] Dump lumaSize : %d\n", lumaSize);
         printf("[CNM_VPUAPI] Dump chromaSize : %d\n", chromaSize);
-        printf("[CNM_VPUAPI] Dump BufAddrY: 0x%x\n", outputInfo.vaDecodeBufAddrY);
-        printf("[CNM_VPUAPI] Dump BufAddrCb: 0x%x\n", outputInfo.vaDecodeBufAddrCb);
-        printf("[CNM_VPUAPI] Dump BufAddrCr: 0x%x\n", outputInfo.vaDecodeBufAddrCr);
+        printf("[CNM_VPUAPI] Dump BufAddrY: 0x%lx\n", outputInfo.vaDecodeBufAddrY);
+        printf("[CNM_VPUAPI] Dump BufAddrCb: 0x%lx\n", outputInfo.vaDecodeBufAddrCb);
+        printf("[CNM_VPUAPI] Dump BufAddrCr: 0x%lx\n", outputInfo.vaDecodeBufAddrCr);
 #endif
 
         dataY = (uint8_t *)osal_malloc(lumaSize);
@@ -2737,14 +2747,14 @@ static VAStatus VpuApiDecPic(
 #endif
 
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
-    printf("[CNM_VPUAPI] bsBuf: 0x%x\n", mediaCtx->bsBuf[mediaCtx->bufIdx].phys_addr);
+    printf("[CNM_VPUAPI] bsBuf: 0x%lx\n", mediaCtx->bsBuf[mediaCtx->bufIdx].phys_addr);
     printf("[CNM_VPUAPI] bsSize: %d\n", mediaCtx->bsSize);
-    printf("[CNM_VPUAPI] paramBuf: 0x%x\n", param.vaParamAddr);
+    printf("[CNM_VPUAPI] paramBuf: 0x%lx\n", param.vaParamAddr);
     printf("[CNM_VPUAPI] numOfSlice: %d\n", param.vaSliceNum);
     printf("[CNM_VPUAPI] RenderTarget: %d\n", param.vaRenderTarget);
-    printf("[CNM_VPUAPI] BufAddrY: 0x%x\n", param.vaDecodeBufAddrY);
-    printf("[CNM_VPUAPI] BufAddrCb: 0x%x\n", param.vaDecodeBufAddrCb);
-    printf("[CNM_VPUAPI] BufAddrCr: 0x%x\n", param.vaDecodeBufAddrCr);
+    printf("[CNM_VPUAPI] BufAddrY: 0x%lx\n", param.vaDecodeBufAddrY);
+    printf("[CNM_VPUAPI] BufAddrCb: 0x%lx\n", param.vaDecodeBufAddrCb);
+    printf("[CNM_VPUAPI] BufAddrCr: 0x%lx\n", param.vaDecodeBufAddrCr);
 #endif
 
 #ifdef FAKE_VPUAPI
@@ -3186,6 +3196,22 @@ static VAStatus VpuApiEncOpen(
         return VA_STATUS_ERROR_OPERATION_FAILED;
     }
 
+    VpuApiAllocateworkBuffer(mediaCtx->coreIdx, &mediaCtx->vbWork);
+    mediaCtx->encOP.instBuffer.workBufBase = mediaCtx->vbWork.phys_addr;
+    mediaCtx->encOP.instBuffer.workBufSize = mediaCtx->vbWork.size;
+
+    VpuApiAllocateTempBuffer(mediaCtx->coreIdx, &mediaCtx->vbTemp);
+    mediaCtx->encOP.instBuffer.tempBufBase = mediaCtx->vbTemp.phys_addr;
+    mediaCtx->encOP.instBuffer.tempBufSize = mediaCtx->vbTemp.size;
+
+    VpuApiAllocateSecAxiBuffer(mediaCtx->coreIdx, &mediaCtx->vbSecAxi);    
+
+    VpuApiAllocateArTableBuffer(mediaCtx->coreIdx,&mediaCtx->vbAr);
+    mediaCtx->encOP.instBuffer.arTblBufBase = mediaCtx->vbAr.phys_addr;
+
+    mediaCtx->encOP.numUseVcore = 1;
+    mediaCtx->encOP.vcoreCoreIdc = 1;
+
     mediaCtx->encOP.bitstreamFormat = bitFormat;
     mediaCtx->encOP.srcFormat = mediaCtx->wtlFormat;
     mediaCtx->encOP.EncStdParam.wave6Param.internalBitDepth = bitDepth;
@@ -3282,9 +3308,27 @@ static void VpuApiEncClose(
         if (mediaCtx->miscParamBuf[index].phys_addr != 0)
             vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->miscParamBuf[index], ENC_ETC, 0);
     }
+    
 #ifdef FAKE_VPUAPI
 #else
     VPU_EncClose(mediaCtx->encHandle);
+
+    if (mediaCtx->vbWork.size) {
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->vbWork, ENC_WORK, 0);
+        mediaCtx->vbWork.size = 0;
+        mediaCtx->vbWork.phys_addr = 0UL;
+    }
+    if (mediaCtx->vbTemp.size) {
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->vbTemp, ENC_TEMP, 0);
+        mediaCtx->vbTemp.size = 0;
+        mediaCtx->vbTemp.phys_addr = 0UL;
+    }
+    if (mediaCtx->vbAr.size) {
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->vbAr, ENC_AR, 0);
+        mediaCtx->vbAr.size = 0;
+        mediaCtx->vbAr.phys_addr = 0UL;
+    }
+
 #endif
     mediaCtx->seqInited = FALSE;
     mediaCtx->numOfRenderTargets = 0;
@@ -3368,6 +3412,8 @@ static VAStatus VpuApiEncCreateBuffer(
         }
     }
 
+    printf("[CNM_VPUAPI] VA Buffer Type : %d, uiNumBufs : %d \n",(int32_t)type, mediaCtx->uiNumBufs);
+
     switch ((int32_t)type)
     {
     case VAEncCodedBufferType:
@@ -3388,9 +3434,9 @@ static VAStatus VpuApiEncCreateBuffer(
                 return va;
             }
         }
-
         vdi_write_memory(mediaCtx->coreIdx, pVb->phys_addr, (Uint8 *)miscParamBuf->data, size, VDI_LITTLE_ENDIAN);
         mediaCtx->miscParamEnable |= (1 << (int32_t)miscParamBuf->type);
+        printf("[CNM_VPUAPI] VAEncMiscParameterBuffer type : %d, miscParamEnable: %08X \n",(int32_t)miscParamBuf->type, mediaCtx->miscParamEnable);
         break;
     }
     case VAEncSequenceParameterBufferType:
@@ -3503,6 +3549,7 @@ static VAStatus VpuApiEncCreateBuffer(
 
         {
             VAEncPackedHeaderParameterBuffer *encPackedHeaderParamBuf = (VAEncPackedHeaderParameterBuffer *)data;
+            printf("[CNM_VPUAPI] VAEncPackedHeaderParameterBuffer type : %d \n",encPackedHeaderParamBuf->type);
             switch (encPackedHeaderParamBuf->type)
             {
             case VAEncPackedHeaderSequence:
@@ -3793,6 +3840,9 @@ static VAStatus VpuApiEncPic(
     param.sourceFrame = &srcFb;
     param.picStreamBufferAddr = mediaCtx->bsBuf[0].phys_addr;
     param.picStreamBufferSize = mediaCtx->bsBuf[0].size;
+    if(mediaCtx->encOP.bitstreamFormat == STD_AVC) {
+        param.cuSizeMode = 7;
+    }
 
     printf("[CNM_VPUAPI] bsBuf: 0x%lx\n", param.picStreamBufferAddr);
     printf("[CNM_VPUAPI] bsSize: %d\n", param.picStreamBufferSize);
