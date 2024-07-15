@@ -2102,8 +2102,7 @@ static VAStatus VpuApiDecGetResult(
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
-    // if (outputInfo.decodingSuccess == 0) {
-    if (outputInfo.warnInfo != 0) {
+    if (outputInfo.decodingSuccess == 0) {
         printf("[CNM_VPUAPI] Decoding Fail: %d, Warning Info: %d\n", outputInfo.decodingSuccess, outputInfo.warnInfo);
     }
 
@@ -2114,7 +2113,7 @@ static VAStatus VpuApiDecGetResult(
     }
 
     if (outputInfo.numOfErrMBs > 0) {
-        printf("[CNM_VPUAPI] Warning Error Block: %d\n", outputInfo.numOfErrMBs);
+        printf("[CNM_VPUAPI] Warning Error Block: %d, Warning Info: %d\n", outputInfo.numOfErrMBs, outputInfo.warnInfo);
     }
     printf("[CNM_VPUAPI] IDX %d | SURFACE %d | PIC %d | NAL %d | BufAddrY : 0x%x | BufAddrCb : 0x%x | BufAddrCr : 0x%x | vaParamAddr : 0x%x | BYTEPOS 0x%x ~ 0x%x | CONSUME : %d | DISP %dx%d\n",
         mediaCtx->decIdx,
