@@ -1911,6 +1911,8 @@ static VAStatus VpuApiDecOpen(
     mediaCtx->decOP.vaEnable        = TRUE;
     mediaCtx->decOP.bitstreamBuffer = 0; // if bitstreamMode is BS_MODE_PIC_END. this value should be 0
     mediaCtx->decOP.bitstreamBufferSize = 0; // if bitstreamMode is BS_MODE_PIC_END. this value should be 0
+    mediaCtx->decOP.errorConcealMode = ERROR_CONCEAL_MODE_INTRA_INTER;
+    mediaCtx->decOP.errorConcealUnit = ERROR_CONCEAL_UNIT_SLICE_TILE;
 
     retCode = VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP);
     if (retCode != RETCODE_SUCCESS) {
@@ -2100,7 +2102,8 @@ static VAStatus VpuApiDecGetResult(
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
-    if (outputInfo.decodingSuccess == 0) {
+    // if (outputInfo.decodingSuccess == 0) {
+    if (outputInfo.warnInfo != 0) {
         printf("[CNM_VPUAPI] Decoding Fail: %d, Warning Info: %d\n", outputInfo.decodingSuccess, outputInfo.warnInfo);
     }
 
