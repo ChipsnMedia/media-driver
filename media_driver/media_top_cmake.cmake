@@ -143,7 +143,9 @@ endif(NOT DEFINED INCLUDED_LIBS OR "${INCLUDED_LIBS}" STREQUAL "")
 #ifdef CNM_VPUAPI_INTERFACE
 target_link_libraries ( ${LIB_NAME} "vpuapi")
 add_definitions(-DCNM_VPUAPI_INTERFACE)
-#add_definitions(-DCNM_FPGA_PLATFORM)
+add_definitions(-DSUPPORT_VAAPI_INTERFACE)
+add_definitions(-DWAVE637)
+add_definitions(-DCNM_FPGA_PLATFORM)
 add_definitions(-DCNM_VPUAPI_INTERFACE_CAP)
 #endif
 

@@ -1253,7 +1253,7 @@ typedef struct CodecInstRef {
 
     coreIdx = mediaCtx->coreIdx;
     instIndex = pRefCodecInst->instIndex;
-    VLOG(INFO, "+%s core=%d, inst=%d\n", __FUNCTION__, coreIdx, instIndex);
+    VLOG(VDI_INFO, "+%s core=%d, inst=%d\n", __FUNCTION__, coreIdx, instIndex);
     
     productId = VPU_GetProductId(mediaCtx->coreIdx);
 
@@ -1263,7 +1263,7 @@ typedef struct CodecInstRef {
 #define REG_BASE 0x00
 #define VCPU_CUR_PC                 (REG_BASE + 0x0004)
 #define VCPU_CUR_LR                 (REG_BASE + 0x0008)
-            VLOG(INFO, "LR=0x%x, PC=0x%x\n", vdi_read_register(coreIdx, VCPU_CUR_LR), vdi_read_register(coreIdx, VCPU_CUR_PC));
+            VLOG(VDI_INFO, "LR=0x%x, PC=0x%x\n", vdi_read_register(coreIdx, VCPU_CUR_LR), vdi_read_register(coreIdx, VCPU_CUR_PC));
             osal_msleep(0);
         }
     }
@@ -1273,7 +1273,7 @@ typedef struct CodecInstRef {
 #define REG_BASE 0x00
 #define VCPU_CUR_PC                 (REG_BASE + 0x0004)
 #define VCPU_CUR_LR                 (REG_BASE + 0x0008)
-            VLOG(INFO, "LR=0x%x, PC=0x%x\n", vdi_read_register(coreIdx, VCPU_CUR_LR), vdi_read_register(coreIdx, VCPU_CUR_PC));
+            VLOG(VDI_INFO, "LR=0x%x, PC=0x%x\n", vdi_read_register(coreIdx, VCPU_CUR_LR), vdi_read_register(coreIdx, VCPU_CUR_PC));
             osal_msleep(0);
         }
         cmd_ret = VPU_DecGiveCommand(mediaCtx->decHandle, GET_DEBUG_INFORM, &debugInfo);
@@ -1282,155 +1282,155 @@ typedef struct CodecInstRef {
             return;
         }
 
-        VLOG(TRACE, "++ interrupt flags \n");
-        VLOG(TRACE, "     pend_intrpt_idc = 0x%x \n", (debugInfo.regs[0x0c]>>16)&0xffff);
-        VLOG(TRACE, "     multi_int_reason = 0x%x \n", debugInfo.regs[0x0c]&0xffff);
-        VLOG(TRACE, "     last interrupt reason = 0x%x \n", debugInfo.regs[0x0d]);
-        VLOG(TRACE, "-- interrupt flags \n\n");
+        VLOG(VDI_TRACE, "++ interrupt flags \n");
+        VLOG(VDI_TRACE, "     pend_intrpt_idc = 0x%x \n", (debugInfo.regs[0x0c]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     multi_int_reason = 0x%x \n", debugInfo.regs[0x0c]&0xffff);
+        VLOG(VDI_TRACE, "     last interrupt reason = 0x%x \n", debugInfo.regs[0x0d]);
+        VLOG(VDI_TRACE, "-- interrupt flags \n\n");
 
-        VLOG(TRACE, "++ available core flags \n");
-        VLOG(TRACE, "     STAGE_SEEK      core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 0)&0x0f));
-        VLOG(TRACE, "     STAGE_PARSING   core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 4)&0x0f));
-        VLOG(TRACE, "     STAGE_DEC/ENC   core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 8)&0x0f));
-        VLOG(TRACE, "     STAGE_PACKAGING core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 12)&0x0f));
-        VLOG(TRACE, "-- avaiable core flags \n\n");
+        VLOG(VDI_TRACE, "++ available core flags \n");
+        VLOG(VDI_TRACE, "     STAGE_SEEK      core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 0)&0x0f));
+        VLOG(VDI_TRACE, "     STAGE_PARSING   core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 4)&0x0f));
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENC   core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 8)&0x0f));
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING core_avail_idc = %d \n", ((debugInfo.regs[0x0e] >> 12)&0x0f));
+        VLOG(VDI_TRACE, "-- avaiable core flags \n\n");
 
-        VLOG(TRACE, "++ the number of the allocated queue and commands in report queue\n");
-        VLOG(TRACE, "     inst0={que_cnt=%d, rq_cnt=%d} inst1={que_cnt=%d, rq_cnt=%d} inst2={que_cnt=%d, rq_cnt=%d} inst3={que_cnt=%d, rq_cnt=%d}\n",
+        VLOG(VDI_TRACE, "++ the number of the allocated queue and commands in report queue\n");
+        VLOG(VDI_TRACE, "     inst0={que_cnt=%d, rq_cnt=%d} inst1={que_cnt=%d, rq_cnt=%d} inst2={que_cnt=%d, rq_cnt=%d} inst3={que_cnt=%d, rq_cnt=%d}\n",
             ((((debugInfo.regs[0x06] >> 0)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x06] >> 0)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x06] >> 8)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x06] >> 8)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x06] >> 16)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x06] >> 16)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x06] >> 24)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x06] >> 24)&0xff)>>0) & 0xf));
-        VLOG(TRACE, "     inst4={que_cnt=%d, rq_cnt=%d} inst5={que_cnt=%d, rq_cnt=%d} inst6={que_cnt=%d, rq_cnt=%d} inst7={que_cnt=%d, rq_cnt=%d}\n",
+        VLOG(VDI_TRACE, "     inst4={que_cnt=%d, rq_cnt=%d} inst5={que_cnt=%d, rq_cnt=%d} inst6={que_cnt=%d, rq_cnt=%d} inst7={que_cnt=%d, rq_cnt=%d}\n",
             ((((debugInfo.regs[0x07] >> 0)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x07] >> 0)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x07] >> 8)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x07] >> 8)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x07] >> 16)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x07] >> 16)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x07] >> 24)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x07] >> 24)&0xff)>>0) & 0xf));
-        VLOG(TRACE, "     inst7={que_cnt=%d, rq_cnt=%d} inst9={que_cnt=%d, rq_cnt=%d} inst10={que_cnt=%d, rq_cnt=%d} inst11={que_cnt=%d, rq_cnt=%d}\n",
+        VLOG(VDI_TRACE, "     inst7={que_cnt=%d, rq_cnt=%d} inst9={que_cnt=%d, rq_cnt=%d} inst10={que_cnt=%d, rq_cnt=%d} inst11={que_cnt=%d, rq_cnt=%d}\n",
             ((((debugInfo.regs[0x08] >> 0)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x08] >> 0)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x08] >> 8)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x08] >> 8)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x08] >> 16)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x08] >> 16)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x08] >> 24)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x08] >> 24)&0xff)>>0) & 0xf));
-        VLOG(TRACE, "     inst12={que_cnt=%d, rq_cnt=%d} inst13={que_cnt=%d, rq_cnt=%d} inst14={que_cnt=%d, rq_cnt=%d} inst15={que_cnt=%d, rq_cnt=%d}\n",
+        VLOG(VDI_TRACE, "     inst12={que_cnt=%d, rq_cnt=%d} inst13={que_cnt=%d, rq_cnt=%d} inst14={que_cnt=%d, rq_cnt=%d} inst15={que_cnt=%d, rq_cnt=%d}\n",
             ((((debugInfo.regs[0x09] >> 0)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x09] >> 0)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x09] >> 8)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x09] >> 8)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x09] >> 16)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x09] >> 16)&0xff)>>0) & 0xf),
             ((((debugInfo.regs[0x09] >> 24)&0xff)>>4) & 0xf), ((((debugInfo.regs[0x09] >> 24)&0xff)>>0) & 0xf));
-        VLOG(TRACE, "-- the number of the allocated queue and commands in report queue\n\n");
+        VLOG(VDI_TRACE, "-- the number of the allocated queue and commands in report queue\n\n");
 
 
-        VLOG(TRACE, "++ status of instance handle\n");
-        VLOG(TRACE, "     inst0 status=%d, inst1 status=%d, inst2 status=%d, inst3 status=%d \n",
+        VLOG(VDI_TRACE, "++ status of instance handle\n");
+        VLOG(VDI_TRACE, "     inst0 status=%d, inst1 status=%d, inst2 status=%d, inst3 status=%d \n",
             ((debugInfo.regs[0x0A] >> 0)&0xf), ((debugInfo.regs[0x0A] >> 4)&0xf), ((debugInfo.regs[0x0A] >> 8)&0xf), ((debugInfo.regs[0x0A] >> 12)&0xf));
-        VLOG(TRACE, "     inst4 status=%d, inst5 status=%d, inst6 status=%d, inst7 status=%d \n",
+        VLOG(VDI_TRACE, "     inst4 status=%d, inst5 status=%d, inst6 status=%d, inst7 status=%d \n",
             ((debugInfo.regs[0x0A] >> 16)&0xf), ((debugInfo.regs[0x0A] >> 20)&0xf), ((debugInfo.regs[0x0A] >> 24)&0xf), ((debugInfo.regs[0x0A] >> 28)&0xf));
 
-        VLOG(TRACE, "     inst8 status=%d, inst9 status=%d, inst10 status=%d, inst11 status=%d \n",
+        VLOG(VDI_TRACE, "     inst8 status=%d, inst9 status=%d, inst10 status=%d, inst11 status=%d \n",
             ((debugInfo.regs[0x0B] >> 0)&0xf), ((debugInfo.regs[0x0B] >> 4)&0xf), ((debugInfo.regs[0x0B] >> 8)&0xf), ((debugInfo.regs[0x0B] >> 12)&0xf));
 
-        VLOG(TRACE, "     inst12 status=%d, inst13 status=%d, inst14 status=%d, inst15 status=%d \n",
+        VLOG(VDI_TRACE, "     inst12 status=%d, inst13 status=%d, inst14 status=%d, inst15 status=%d \n",
             ((debugInfo.regs[0x0B] >> 16)&0xf), ((debugInfo.regs[0x0B] >> 20)&0xf), ((debugInfo.regs[0x0B] >> 24)&0xf), ((debugInfo.regs[0x0B] >> 28)&0xf));
-        VLOG(TRACE, "-- status of instance handle\n\n");
+        VLOG(VDI_TRACE, "-- status of instance handle\n\n");
 
-        VLOG(TRACE, "++ active command in each stage\n");
-        VLOG(TRACE, "     STAGE_SEEK, CMD_INST_ID = %d \n", (debugInfo.regs[0x10]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x10]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_IDX = %d \n", (debugInfo.regs[0x11]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x11]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x12]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_STATUS = %d \n", (debugInfo.regs[0x12]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_CMD = %d \n", (debugInfo.regs[0x13]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x13]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x14]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_SEEK, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x14]>>0)&0xffff);
-
-
-        VLOG(TRACE, "     STAGE_PARSING, CMD_INST_ID = %d \n", (debugInfo.regs[0x15]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x15]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_IDX = %d \n", (debugInfo.regs[0x16]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x16]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x17]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_STATUS = %d \n", (debugInfo.regs[0x17]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_CMD = %d \n", (debugInfo.regs[0x18]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x18]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x19]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PARSING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x19]>>0)&0xffff);
+        VLOG(VDI_TRACE, "++ active command in each stage\n");
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_INST_ID = %d \n", (debugInfo.regs[0x10]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x10]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_IDX = %d \n", (debugInfo.regs[0x11]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x11]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x12]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_STATUS = %d \n", (debugInfo.regs[0x12]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_CMD = %d \n", (debugInfo.regs[0x13]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x13]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x14]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_SEEK, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x14]>>0)&0xffff);
 
 
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_INST_ID = %d \n", (debugInfo.regs[0x1a]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x1a]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_IDX = %d \n", (debugInfo.regs[0x1b]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x1b]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x1c]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_STATUS = %d \n", (debugInfo.regs[0x1c]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_CMD = %d \n", (debugInfo.regs[0x1d]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x1d]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x1e]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_DEC/ENCODING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x1e]>>0)&0xffff);
-
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_INST_ID = %d \n", (debugInfo.regs[0x1f]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x1f]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_IDX = %d \n", (debugInfo.regs[0x20]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x20]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x21]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_STATUS = %d \n", (debugInfo.regs[0x21]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_CMD = %d \n", (debugInfo.regs[0x22]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x22]>>0)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x23]>>16)&0xffff);
-        VLOG(TRACE, "     STAGE_PACKAGING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x23]>>0)&0xffff);
-        VLOG(TRACE, "-- active command in each stage\n\n");
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_INST_ID = %d \n", (debugInfo.regs[0x15]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x15]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_IDX = %d \n", (debugInfo.regs[0x16]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x16]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x17]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_STATUS = %d \n", (debugInfo.regs[0x17]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_CMD = %d \n", (debugInfo.regs[0x18]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x18]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x19]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PARSING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x19]>>0)&0xffff);
 
 
-        VLOG(TRACE, "++ queued commands in each stage\n");
-        VLOG(TRACE, "     STAGE_SEEK      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_INST_ID = %d \n", (debugInfo.regs[0x1a]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x1a]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_IDX = %d \n", (debugInfo.regs[0x1b]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x1b]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x1c]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_STATUS = %d \n", (debugInfo.regs[0x1c]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_CMD = %d \n", (debugInfo.regs[0x1d]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x1d]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x1e]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x1e]>>0)&0xffff);
+
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_INST_ID = %d \n", (debugInfo.regs[0x1f]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_QUE_CNT = %d \n", (debugInfo.regs[0x1f]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_IDX = %d \n", (debugInfo.regs[0x20]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_BUF_IDX = %d \n", (debugInfo.regs[0x20]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_QUEUE_STATUS = %d \n", (debugInfo.regs[0x21]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_STATUS = %d \n", (debugInfo.regs[0x21]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_CMD = %d \n", (debugInfo.regs[0x22]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_USE_TASKBUF = %d \n", (debugInfo.regs[0x22]>>0)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_SCHED_STATUS = %d \n", (debugInfo.regs[0x23]>>16)&0xffff);
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING, CMD_MAX_QUEUE_DEPTH = %d \n", (debugInfo.regs[0x23]>>0)&0xffff);
+        VLOG(VDI_TRACE, "-- active command in each stage\n\n");
+
+
+        VLOG(VDI_TRACE, "++ queued commands in each stage\n");
+        VLOG(VDI_TRACE, "     STAGE_SEEK      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
             ((debugInfo.regs[0x30] >> 0) & 0xf), ((debugInfo.regs[0x30] >> 4) & 0xf),
             ((debugInfo.regs[0x30] >> 8) & 0xf), ((debugInfo.regs[0x30] >> 12) & 0xf),
             ((debugInfo.regs[0x30] >> 16) & 0xf), ((debugInfo.regs[0x30] >> 20) & 0xf),
             ((debugInfo.regs[0x30] >> 24) & 0xf), ((debugInfo.regs[0x30] >> 28) & 0xf));
-        VLOG(TRACE, "     STAGE_SEEK      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
+        VLOG(VDI_TRACE, "     STAGE_SEEK      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
             ((debugInfo.regs[0x31] >> 0) & 0xf), ((debugInfo.regs[0x31] >> 4) & 0xf),
             ((debugInfo.regs[0x31] >> 8) & 0xf), ((debugInfo.regs[0x31] >> 12) & 0xf),
             ((debugInfo.regs[0x31] >> 16) & 0xf), ((debugInfo.regs[0x31] >> 20) & 0xf),
             ((debugInfo.regs[0x31] >> 24) & 0xf), ((debugInfo.regs[0x31] >> 28) & 0xf));
-        VLOG(TRACE, "     STAGE_PARSING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
+        VLOG(VDI_TRACE, "     STAGE_PARSING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
             ((debugInfo.regs[0x32] >> 0) & 0xf), ((debugInfo.regs[0x32] >> 4) & 0xf),
             ((debugInfo.regs[0x32] >> 8) & 0xf), ((debugInfo.regs[0x32] >> 12) & 0xf),
             ((debugInfo.regs[0x32] >> 16) & 0xf), ((debugInfo.regs[0x32] >> 20) & 0xf),
             ((debugInfo.regs[0x32] >> 24) & 0xf), ((debugInfo.regs[0x32] >> 28) & 0xf));
-        VLOG(TRACE, "     STAGE_PARSING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
+        VLOG(VDI_TRACE, "     STAGE_PARSING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
             ((debugInfo.regs[0x33] >> 0) & 0xf), ((debugInfo.regs[0x33] >> 4) & 0xf),
             ((debugInfo.regs[0x33] >> 8) & 0xf), ((debugInfo.regs[0x33] >> 12) & 0xf),
             ((debugInfo.regs[0x33] >> 16) & 0xf), ((debugInfo.regs[0x33] >> 20) & 0xf),
             ((debugInfo.regs[0x33] >> 24) & 0xf), ((debugInfo.regs[0x33] >> 28) & 0xf));
-        VLOG(TRACE, "     STAGE_DEC/ENCODING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
             ((debugInfo.regs[0x34] >> 0) & 0xf), ((debugInfo.regs[0x34] >> 4) & 0xf),
             ((debugInfo.regs[0x34] >> 8) & 0xf), ((debugInfo.regs[0x34] >> 12) & 0xf),
             ((debugInfo.regs[0x34] >> 16) & 0xf), ((debugInfo.regs[0x34] >> 20) & 0xf),
             ((debugInfo.regs[0x34] >> 24) & 0xf), ((debugInfo.regs[0x34] >> 28) & 0xf));
-        VLOG(TRACE, "     STAGE_DEC/ENCODING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
+        VLOG(VDI_TRACE, "     STAGE_DEC/ENCODING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
             ((debugInfo.regs[0x35] >> 0) & 0xf), ((debugInfo.regs[0x35] >> 4) & 0xf),
             ((debugInfo.regs[0x35] >> 8) & 0xf), ((debugInfo.regs[0x35] >> 12) & 0xf),
             ((debugInfo.regs[0x35] >> 16) & 0xf), ((debugInfo.regs[0x35] >> 20) & 0xf),
             ((debugInfo.regs[0x35] >> 24) & 0xf), ((debugInfo.regs[0x35] >> 28) & 0xf));
-        VLOG(TRACE, "     STAGE_PACKAGING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING      inst0->cmd_cnt=%d, inst1->cmt_cmd=%d, inst2->cmd_cnt=%d, inst3=>cmd_cnt=%d inst4=>cmd_cnt=%d, inst5=>cmd_cnt=%d, inst6=>cmd_cnt=%d, inst7=>cmd_cnt=%d \n",
             ((debugInfo.regs[0x36] >> 0) & 0xf), ((debugInfo.regs[0x36] >> 4) & 0xf),
             ((debugInfo.regs[0x36] >> 8) & 0xf), ((debugInfo.regs[0x36] >> 12) & 0xf),
             ((debugInfo.regs[0x36] >> 16) & 0xf), ((debugInfo.regs[0x36] >> 20) & 0xf),
             ((debugInfo.regs[0x36] >> 24) & 0xf), ((debugInfo.regs[0x36] >> 28) & 0xf));
-        VLOG(TRACE, "     STAGE_PACKAGING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
+        VLOG(VDI_TRACE, "     STAGE_PACKAGING      inst8->cmd_cnt=%d, inst9->cmt_cmd=%d, inst10->cmd_cnt=%d, inst11=>cmd_cnt=%d inst12=>cmd_cnt=%d, inst13=>cmd_cnt=%d, inst14=>cmd_cnt=%d, inst15=>cmd_cnt=%d \n",
             ((debugInfo.regs[0x37] >> 0) & 0xf), ((debugInfo.regs[0x37] >> 4) & 0xf),
             ((debugInfo.regs[0x37] >> 8) & 0xf), ((debugInfo.regs[0x37] >> 12) & 0xf),
             ((debugInfo.regs[0x37] >> 16) & 0xf), ((debugInfo.regs[0x37] >> 20) & 0xf),
             ((debugInfo.regs[0x37] >> 24) & 0xf), ((debugInfo.regs[0x37] >> 28) & 0xf));
-        VLOG(TRACE, "-- queued commands in each stage\n\n");
+        VLOG(VDI_TRACE, "-- queued commands in each stage\n\n");
 
-        // VLOG(TRACE, "-- vp9 vcore wtl status \n\n");
-        // VLOG(TRACE, "DEBUG_SCHED_VCORE_STATUS %08x \n", (debugInfo.regs[0x38]));
-        // VLOG(TRACE, "DEBUG_FBC_AVAIL          %08x \n", (debugInfo.regs[0x39]));
-        // VLOG(TRACE, "DEBUG_WTL_AVAIL          %08x \n", (debugInfo.regs[0x3A]));
-        // VLOG(TRACE, "-- vp9 vcore wtl status \n\n");
+        // VLOG(VDI_TRACE, "-- vp9 vcore wtl status \n\n");
+        // VLOG(VDI_TRACE, "DEBUG_SCHED_VCORE_STATUS %08x \n", (debugInfo.regs[0x38]));
+        // VLOG(VDI_TRACE, "DEBUG_FBC_AVAIL          %08x \n", (debugInfo.regs[0x39]));
+        // VLOG(VDI_TRACE, "DEBUG_WTL_AVAIL          %08x \n", (debugInfo.regs[0x3A]));
+        // VLOG(VDI_TRACE, "-- vp9 vcore wtl status \n\n");
     }
-    VLOG(INFO, "-%s core=%d, inst=%d\n", __FUNCTION__, coreIdx, instIndex);
+    VLOG(VDI_INFO, "-%s core=%d, inst=%d\n", __FUNCTION__, coreIdx, instIndex);
 }
 static void VpuApiAddSurfaceInfo(
     PDDI_MEDIA_CONTEXT mediaCtx,
@@ -2115,7 +2115,7 @@ static VAStatus VpuApiDecGetResult(
     if (outputInfo.numOfErrMBs > 0) {
         printf("[CNM_VPUAPI] Warning Error Block: %d, Warning Info: %d\n", outputInfo.numOfErrMBs, outputInfo.warnInfo);
     }
-    printf("[CNM_VPUAPI] IDX %d | SURFACE %d | PIC %d | NAL %d | BufAddrY : 0x%x | BufAddrCb : 0x%x | BufAddrCr : 0x%x | vaParamAddr : 0x%x | BYTEPOS 0x%x ~ 0x%x | CONSUME : %d | DISP %dx%d\n",
+    printf("[CNM_VPUAPI] IDX %d | SURFACE %d | PIC %d | NAL %d | BufAddrY : 0x%lx | BufAddrCb : 0x%lx | BufAddrCr : 0x%lx | vaParamAddr : 0x%lx | BYTEPOS 0x%lx ~ 0x%lx | CONSUME : %ld | DISP %dx%d\n",
         mediaCtx->decIdx,
         surfaceID,
         outputInfo.picType, outputInfo.nalType,
@@ -2347,10 +2347,14 @@ static void AllocateEncInternalBuffer(
     uint32_t fbWidth = mediaCtx->linearStride;
     uint32_t fbHeight = mediaCtx->linearHeight;
     uint32_t fbSize = 0;
+    EncAuxBufferSizeInfo sizeInfo = {0,};
 
     pVb = &mediaCtx->fbcYOffsetBufMem[index];
     if (pVb->phys_addr == 0) {
-        fbSize    = WAVE6_FBC_LUMA_TABLE_SIZE(fbWidth, fbHeight);
+        sizeInfo.width = fbWidth;
+        sizeInfo.height = fbHeight;
+        sizeInfo.type = AUX_BUF_FBC_Y_TBL;
+        VPU_EncGetAuxBufSize(mediaCtx->encHandle, sizeInfo, &fbSize);
         pVb->size = ((fbSize+4095)&~4095)+4096;
 
         if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCY_TBL, 0) < 0)
@@ -2359,7 +2363,8 @@ static void AllocateEncInternalBuffer(
 
     pVb = &mediaCtx->fbcCOffsetBufMem[index];
     if (pVb->phys_addr == 0) {
-        fbSize    = WAVE6_FBC_CHROMA_TABLE_SIZE(fbWidth, fbHeight);
+        sizeInfo.type = AUX_BUF_FBC_C_TBL;
+        VPU_EncGetAuxBufSize(mediaCtx->encHandle, sizeInfo, &fbSize);
         pVb->size = ((fbSize+4095)&~4095)+4096;
 
         if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_FBCC_TBL, 0) < 0)
@@ -2368,7 +2373,8 @@ static void AllocateEncInternalBuffer(
 
     pVb = &mediaCtx->mvColBufMem[index];
     if (pVb->phys_addr == 0) {
-        fbSize    = WAVE6_ENC_HEVC_MVCOL_BUF_SIZE(fbWidth, fbHeight);
+        sizeInfo.type = AUX_BUF_MV_COL;
+        VPU_EncGetAuxBufSize(mediaCtx->encHandle, sizeInfo, &fbSize);
         pVb->size = ((fbSize+4095)&~4095)+4096;
 
         if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_MV, 0) < 0)
@@ -2377,7 +2383,8 @@ static void AllocateEncInternalBuffer(
 
     pVb = &mediaCtx->subSampledBufMem[index];
     if (pVb->phys_addr == 0) {
-        fbSize    = WAVE6_ENC_SUBSAMPLED_SIZE(fbWidth, fbHeight);
+        sizeInfo.type = AUX_BUF_SUB_SAMPLE;
+        VPU_EncGetAuxBufSize(mediaCtx->encHandle, sizeInfo, &fbSize);
         pVb->size = ((fbSize+4095)&~4095)+4096;
 
         if (vdi_allocate_dma_memory(mediaCtx->coreIdx, pVb, ENC_SUBSAMBUF, 0) < 0)
@@ -3093,21 +3100,21 @@ static VAStatus VpuApiEncPic(
     printf("[CNM_VPUAPI] packedSliceParamNum: %d\n", vaInfo.packedSliceParamNum);
     printf("[CNM_VPUAPI] packedSeiParamNum: %d\n", vaInfo.packedSeiParamNum);
     printf("[CNM_VPUAPI] miscEnable: %d\n", vaInfo.miscEnable);
-    printf("[CNM_VPUAPI] seqParamBufAddr: 0x%x\n", vaInfo.seqParamBufAddr);
-    printf("[CNM_VPUAPI] picParamBufAddr: 0x%x\n", vaInfo.picParamBufAddr);
-    printf("[CNM_VPUAPI] sliceParamBufAddr: 0x%x\n", vaInfo.sliceParamBufAddr);
-    printf("[CNM_VPUAPI] packedParamBufAddr: 0x%x\n", vaInfo.packedParamBufAddr);
-    printf("[CNM_VPUAPI] packedParamDataBufAddr: 0x%x\n", vaInfo.packedParamDataBufAddr);
-    printf("[CNM_VPUAPI] miscFrameRateBufAddr: 0x%x\n", vaInfo.miscFrameRateBufAddr);
-    printf("[CNM_VPUAPI] miscRateControlBufAddr: 0x%x\n", vaInfo.miscRateControlBufAddr);
-    printf("[CNM_VPUAPI] miscHrdBufAddr: 0x%x\n", vaInfo.miscHrdBufAddr);
+    printf("[CNM_VPUAPI] seqParamBufAddr: 0x%lx\n", vaInfo.seqParamBufAddr);
+    printf("[CNM_VPUAPI] picParamBufAddr: 0x%lx\n", vaInfo.picParamBufAddr);
+    printf("[CNM_VPUAPI] sliceParamBufAddr: 0x%lx\n", vaInfo.sliceParamBufAddr);
+    printf("[CNM_VPUAPI] packedParamBufAddr: 0x%lx\n", vaInfo.packedParamBufAddr);
+    printf("[CNM_VPUAPI] packedParamDataBufAddr: 0x%lx\n", vaInfo.packedParamDataBufAddr);
+    printf("[CNM_VPUAPI] miscFrameRateBufAddr: 0x%lx\n", vaInfo.miscFrameRateBufAddr);
+    printf("[CNM_VPUAPI] miscRateControlBufAddr: 0x%lx\n", vaInfo.miscRateControlBufAddr);
+    printf("[CNM_VPUAPI] miscHrdBufAddr: 0x%lx\n", vaInfo.miscHrdBufAddr);
     printf("[CNM_VPUAPI] reconTarget: %d\n", reconTargetIdx);
-    printf("[CNM_VPUAPI] fbcYBufAddr: 0x%x\n", vaInfo.fbcYBufAddr);
-    printf("[CNM_VPUAPI] fbcCBufAddr: 0x%x\n", vaInfo.fbcCBufAddr);
-    printf("[CNM_VPUAPI] fbcYOffsetBufAddr: 0x%x\n", vaInfo.fbcYOffsetBufAddr);
-    printf("[CNM_VPUAPI] fbcCOffsetBufAddr: 0x%x\n", vaInfo.fbcCOffsetBufAddr);
-    printf("[CNM_VPUAPI] mvColBufAddr: 0x%x\n", vaInfo.mvColBufAddr);
-    printf("[CNM_VPUAPI] subSampledBufAddr: 0x%x\n", vaInfo.subSampledBufAddr);
+    printf("[CNM_VPUAPI] fbcYBufAddr: 0x%lx\n", vaInfo.fbcYBufAddr);
+    printf("[CNM_VPUAPI] fbcCBufAddr: 0x%lx\n", vaInfo.fbcCBufAddr);
+    printf("[CNM_VPUAPI] fbcYOffsetBufAddr: 0x%lx\n", vaInfo.fbcYOffsetBufAddr);
+    printf("[CNM_VPUAPI] fbcCOffsetBufAddr: 0x%lx\n", vaInfo.fbcCOffsetBufAddr);
+    printf("[CNM_VPUAPI] mvColBufAddr: 0x%lx\n", vaInfo.mvColBufAddr);
+    printf("[CNM_VPUAPI] subSampledBufAddr: 0x%lx\n", vaInfo.subSampledBufAddr);
 
     VPU_EncGiveCommand(hdl, ENC_SET_VAAPI_INFO, &vaInfo);
 
@@ -3193,18 +3200,18 @@ static VAStatus VpuApiEncPic(
     param.picStreamBufferAddr = mediaCtx->bsBuf[0].phys_addr;
     param.picStreamBufferSize = mediaCtx->bsBuf[0].size;
 
-    printf("[CNM_VPUAPI] bsBuf: 0x%x\n", param.picStreamBufferAddr);
+    printf("[CNM_VPUAPI] bsBuf: 0x%lx\n", param.picStreamBufferAddr);
     printf("[CNM_VPUAPI] bsSize: %d\n", param.picStreamBufferSize);
     printf("[CNM_VPUAPI] renderTarget: %d\n", renderTargetIdx);
     printf("[CNM_VPUAPI] srcStride: %d\n", param.sourceFrame->stride);
-    printf("[CNM_VPUAPI] srcBufY: 0x%x\n", param.sourceFrame->bufY);
-    printf("[CNM_VPUAPI] srcBufCb: 0x%x\n", param.sourceFrame->bufCb);
-    printf("[CNM_VPUAPI] srcBufCr: 0x%x\n", param.sourceFrame->bufCr);
+    printf("[CNM_VPUAPI] srcBufY: 0x%lx\n", param.sourceFrame->bufY);
+    printf("[CNM_VPUAPI] srcBufCb: 0x%lx\n", param.sourceFrame->bufCb);
+    printf("[CNM_VPUAPI] srcBufCr: 0x%lx\n", param.sourceFrame->bufCr);
 
     if (mediaCtx->miscParamEnable&(1<<VAEncMiscParameterTypeROI)) {
         UpdateEncROIBuffer(mediaCtx, reconTargetIdx);
         param.customMapOpt.customRoiMapEnable = TRUE;
-        param.customMapOpt.addrCustomMap      = mediaCtx->roiBufMem[reconTargetIdx].phys_addr;
+        param.customMapOpt.customMapAddr      = mediaCtx->roiBufMem[reconTargetIdx].phys_addr;
     }
 
     if ((ret=VPU_EncStartOneFrame(hdl, &param)) != RETCODE_SUCCESS) {
@@ -3232,7 +3239,7 @@ static VAStatus VpuApiEncPic(
         return VA_STATUS_ERROR_UNIMPLEMENTED;
     }
 
-    printf("[CNM_VPUAPI] IDX %d | PIC %d | RDPTR : 0x%x | WRPTR : 0x%x | BYTES : 0x%x\n",
+    printf("[CNM_VPUAPI] IDX %d | PIC %d | RDPTR : 0x%lx | WRPTR : 0x%lx | BYTES : 0x%x\n",
         mediaCtx->encIdx,
         outputInfo.picType, outputInfo.rdPtr, outputInfo.wrPtr, outputInfo.bitstreamSize);
 
