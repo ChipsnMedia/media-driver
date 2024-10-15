@@ -388,7 +388,7 @@ VAStatus DdiMediaUtil_SetMediaResetEnableFlag(PDDI_MEDIA_CONTEXT mediaCtx);
 #define DDI_FUNCTION_ENTER()            UMD_ATRACE_BEGIN(__FUNCTION__)
 #define DDI_FUNCTION_EXIT(status)       UMD_ATRACE_END
 #else
-// #define USE_CNM_TRACE
+#define USE_CNM_TRACE
 #ifdef USE_CNM_TRACE
 #define DDI_FUNCTION_ENTER()  { printf("[CNM_TRACE]++%s:%d \n", __FUNCTION__, __LINE__);   MOS_FUNCTION_ENTER(MOS_COMPONENT_DDI, MOS_DDI_SUBCOMP_SELF) }
 #else

@@ -1205,6 +1205,9 @@ static void AllocateLinearFrameBuffer(
         mediaCtx->linearFrameBuf[index].bufCr = pVb->phys_addr + fbLumaSize + fbChromaSize;
     else
         mediaCtx->linearFrameBuf[index].bufCr = -1;
+
+    mediaCtx->linearFrameBuf[index].width = fbWidth;
+    mediaCtx->linearFrameBuf[index].height = fbHeight;
 }
 
 static void FreeLinearFrameBuffer(
@@ -1218,6 +1221,66 @@ static void FreeLinearFrameBuffer(
     }
     vdi_release(mediaCtx->coreIdx);
 }
+
+static BOOL Wave6xxSetLinearFrameBufferInfo(
+    DecHandle decHandle,
+    PDDI_MEDIA_CONTEXT mediaCtx,
+    FrameBuffer* frame_buffer,
+    DecInitialInfo   seqInfo)
+{
+    Uint32 framebufSize;
+    Uint32 coreIndex;
+    FrameBufferAllocInfo fbAllocInfo;
+    RetCode ret;
+    size_t linearStride;
+    size_t picWidth;
+    size_t picHeight;
+    size_t fbHeight;
+
+    TiledMapType mapType = LINEAR_FRAME_MAP;
+    coreIndex = mediaCtx->coreIdx;
+
+    osal_memset(&fbAllocInfo, 0x00, sizeof(FrameBufferAllocInfo));
+    FrameBufferFormat outFormat = mediaCtx->wtlFormat;
+    picWidth  = frame_buffer->width;
+    picHeight = (STD_AVC == mediaCtx->decOP.bitstreamFormat) ? VPU_ALIGN16(frame_buffer->height) : VPU_ALIGN8(frame_buffer->height);
+    fbHeight  = picHeight;
+
+    linearStride = VPU_GetFrameBufStride(decHandle, picWidth, picHeight, outFormat, mediaCtx->cbcrInterleave, (TiledMapType)mapType);
+    framebufSize = VPU_GetFrameBufSize(decHandle, coreIndex, linearStride, fbHeight, (TiledMapType)mapType, outFormat, mediaCtx->cbcrInterleave, NULL);
+    frame_buffer->updateFbInfo = TRUE;
+    frame_buffer->size  = framebufSize;
+
+    fbAllocInfo.cbcrInterleave  = mediaCtx->cbcrInterleave;
+    fbAllocInfo.nv21    = mediaCtx->nv21;
+    fbAllocInfo.format  = outFormat;
+    fbAllocInfo.num     = 1;
+    fbAllocInfo.mapType = (TiledMapType)mapType;
+    fbAllocInfo.stride  = linearStride;
+    fbAllocInfo.height  = fbHeight;
+    fbAllocInfo.endian  = mediaCtx->decOP.frameEndian;
+    fbAllocInfo.type = FB_TYPE_CODEC;
+
+    printf("[CNM_VPUAPI] width:%d, height:%d linearStrie:%ld, fbheight:%ld, framebufSize:%d cbcrInterleave:%d nv21:%d\n", 
+                                                                        frame_buffer->width, 
+                                                                        frame_buffer->height, 
+                                                                        linearStride, 
+                                                                        fbHeight, 
+                                                                        framebufSize,
+                                                                        mediaCtx->cbcrInterleave,
+                                                                        mediaCtx->nv21);
+
+    ret = VPU_DecAllocateFrameBuffer(decHandle, fbAllocInfo, frame_buffer);
+    if (ret != RETCODE_SUCCESS) {
+        VLOG(VDI_ERR, "%s:%d failed to VPU_DecAllocateFrameBuffer() ret:%d\n",
+            __FUNCTION__, __LINE__, ret);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+
 #endif
 
 
@@ -1561,6 +1624,8 @@ static VAStatus VpuApiInit(
         strcpy(fwPath, "/usr/local/lib/vincent.bin");
         break;
     case PRODUCT_ID_627:
+    case PRODUCT_ID_617:
+    case PRODUCT_ID_637:
         strcpy(fwPath, "/usr/local/lib/seurat.bin");
         break;
     default:
@@ -1598,6 +1663,57 @@ static void VpuApiDeInit(
     VPU_DeInit(coreIdx);
     printf("[CNM_VPUAPI] Success DeInit VPU\n");
 }
+
+
+static RetCode AllocateAuxBuffer(PDDI_MEDIA_CONTEXT mediaCtx, DecInitialInfo *seqInfo, 
+                        DecAuxBufferSizeInfo sizeInfo, AuxBufferType type, MemTypes memTypes)
+{
+    AuxBufferInfo auxBufferInfo;
+    AuxBuffer bufArr[MAX_REG_FRAME];
+    Uint32 i;
+    RetCode ret_code = RETCODE_FAILURE;
+
+    sizeInfo.type = type;
+    auxBufferInfo.type = type;
+    auxBufferInfo.num = seqInfo->minFrameBufferCount;
+
+    if (type == AUX_BUF_DEF_CDF     ||
+        type == AUX_BUF_MV_COL_PRE_ENT ||
+        type == AUX_BUF_SEG_MAP) {
+        auxBufferInfo.num = 1;
+    }
+    else if (type == AUX_BUF_MV_COL) {
+        auxBufferInfo.num = seqInfo->reqMvColBufferCount;
+    }
+
+    osal_memset(bufArr, 0x00, sizeof(bufArr));
+    auxBufferInfo.bufArray = bufArr;
+
+    for (i = 0; i < auxBufferInfo.num; i++) {
+        if ((ret_code = VPU_DecGetAuxBufSize(mediaCtx->decHandle, sizeInfo, &mediaCtx->vbAux[type][i].size)) != RETCODE_SUCCESS) {
+            break;
+        } else {
+            if (vdi_allocate_dma_memory(mediaCtx->coreIdx, &mediaCtx->vbAux[type][i], memTypes, 0) < 0) {
+                ret_code = RETCODE_INSUFFICIENT_RESOURCE;
+                break;
+            }
+            auxBufferInfo.bufArray[i].index = i;
+            auxBufferInfo.bufArray[i].addr = mediaCtx->vbAux[type][i].phys_addr;
+            auxBufferInfo.bufArray[i].size = mediaCtx->vbAux[type][i].size;
+        }
+    }
+
+    if (ret_code == RETCODE_SUCCESS) {
+        // host to API, to used
+        ret_code = VPU_DecRegisterAuxBuffer(mediaCtx->decHandle, auxBufferInfo);
+    }
+
+    return ret_code;
+}
+
+
+#define MAX_RES_WIDTH 8192
+#define MAX_RES_HEIGHT 8192
 
 static VAStatus AllocateDecFrameBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx,
@@ -1673,6 +1789,49 @@ static VAStatus AllocateDecFrameBuffer(
         frameBuf[index].endian         = decOP.frameEndian;
         frameBuf[index].lumaBitDepth   = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
         frameBuf[index].chromaBitDepth = (mediaCtx->wtlFormat == FORMAT_420) ? 8 : 10;
+    }
+
+    DecAuxBufferSizeInfo sizeInfo = {0,};
+    sizeInfo.width = seqInfo.picWidth;
+    sizeInfo.height = seqInfo.picHeight;
+
+    if ((retCode = AllocateAuxBuffer(mediaCtx, &seqInfo, sizeInfo, AUX_BUF_FBC_Y_TBL, DEC_FBCY_TBL)) != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to allocate AUX_BUF_FBC_Y_TBL, return code : %d \n", retCode);
+        return VA_STATUS_ERROR_ALLOCATION_FAILED;
+    }
+
+    if ((retCode = AllocateAuxBuffer(mediaCtx, &seqInfo, sizeInfo, AUX_BUF_FBC_C_TBL, DEC_FBCC_TBL)) != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to allocate AUX_BUF_FBC_C_TBL, return code : %d \n", retCode);
+        return VA_STATUS_ERROR_ALLOCATION_FAILED;
+    }
+
+    if ((retCode = AllocateAuxBuffer(mediaCtx, &seqInfo, sizeInfo, AUX_BUF_MV_COL, DEC_MV)) != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] Failed to allocate AUX_BUF_MV_COL, return code : %d \n",  retCode);
+        return VA_STATUS_ERROR_ALLOCATION_FAILED;
+    }
+
+    if (decOP.bitstreamFormat == STD_AV1) {
+        if ((retCode = AllocateAuxBuffer(mediaCtx, &seqInfo, sizeInfo, AUX_BUF_DEF_CDF, DEC_DEF_CDF)) != RETCODE_SUCCESS) {
+            printf("[CNM_VPUAPI] Failed to allocate AUX_BUF_DEF_CDF, return code : %d \n", retCode);
+            return VA_STATUS_ERROR_ALLOCATION_FAILED;
+        }
+    } else if (decOP.bitstreamFormat == STD_VP9) {
+        sizeInfo.width = MAX_RES_WIDTH;
+        sizeInfo.height = MAX_RES_HEIGHT;
+        if ((retCode = AllocateAuxBuffer(mediaCtx, &seqInfo, sizeInfo, AUX_BUF_SEG_MAP, DEC_SEG_MAP)) != RETCODE_SUCCESS) {
+            printf("[CNM_VPUAPI] Failed to allocate AUX_BUF_SEG_MAP, return code : %d \n", retCode);
+            return VA_STATUS_ERROR_ALLOCATION_FAILED;
+        }
+    }
+
+    if (decOP.bitstreamFormat == STD_AV1 || decOP.bitstreamFormat == STD_VP9) {
+        sizeInfo.width = MAX_RES_WIDTH;
+        sizeInfo.height = MAX_RES_HEIGHT;
+        if ((retCode = AllocateAuxBuffer(mediaCtx, &seqInfo, sizeInfo, AUX_BUF_MV_COL_PRE_ENT, DEC_ETC)) != RETCODE_SUCCESS) {
+            printf("[CNM_VPUAPI] Failed to allocate AUX_BUF_MV_COL_PRE_ENT, return code : %d \n",  retCode);
+            return VA_STATUS_ERROR_ALLOCATION_FAILED;
+        }
+        
     }
 
     if ((retCode = VPU_DecRegisterFrameBufferEx(hdl, frameBuf, fbCount, mediaCtx->numOfRenderTargets, fbStride, fbHeight, COMPRESSED_FRAME_MAP)) != RETCODE_SUCCESS) {
@@ -1827,6 +1986,34 @@ static VAStatus VpuApiDecRenderPicture(
     return va;
 }
 
+static BOOL VpuApiAllocateworkBuffer(int32_t coreIdx, vpu_buffer_t *vbWork) {
+
+    if (vdi_init(coreIdx) < 0)
+        printf("[CNM_VPUAPI] FAIL vdi_init\n");
+
+    vbWork->phys_addr = 0;
+    vbWork->size = (Uint32)WAVE637DEC_WORKBUF_SIZE_FOR_CQ;
+
+    if (vdi_allocate_dma_memory(coreIdx, vbWork, DEC_WORK, 0) < 0)
+        return FALSE;
+    vdi_clear_memory(coreIdx, vbWork->phys_addr, vbWork->size, 0);
+    return TRUE;
+}
+
+static BOOL VpuApiAllocateTempBuffer(int32_t coreIdx, vpu_buffer_t *vbTemp)
+{
+    if (vdi_init(coreIdx) < 0)
+        printf("[CNM_VPUAPI] FAIL vdi_init\n");
+
+    vbTemp->phys_addr = 0;
+    vbTemp->size  = VPU_ALIGN4096(WAVE6_TEMPBUF_SIZE_FOR_CQ);
+
+    if (vdi_allocate_dma_memory(coreIdx, vbTemp, DEC_TEMP, 0) < 0)
+        return FALSE;
+    vdi_clear_memory(coreIdx, vbTemp->phys_addr, vbTemp->size, 0);
+    return TRUE;
+}
+
 static VAStatus VpuApiDecOpen(
     VADriverContextP  ctx,
     VAConfigID        configId,
@@ -1845,6 +2032,7 @@ static VAStatus VpuApiDecOpen(
     VAEntrypoint entrypoint;
     bool findValidConfigId = false;
     uint32_t i = 0;
+    Int32 productId;
 
     for (i = 0; i < VPUAPI_MAX_ATTRIBUTE; i++) {
         if (s_vpuApiAttrs[i].actual_profile == VAProfileNone) {
@@ -1914,6 +2102,27 @@ static VAStatus VpuApiDecOpen(
     mediaCtx->decOP.errorConcealMode = ERROR_CONCEAL_MODE_INTRA_INTER;
     mediaCtx->decOP.errorConcealUnit = ERROR_CONCEAL_UNIT_SLICE_TILE;
 
+    productId = VPU_GetProductId(mediaCtx->coreIdx);
+    printf("jackson.......... 1\n");
+    if (productId == PRODUCT_ID_637 || productId == PRODUCT_ID_617) {
+        if (VpuApiAllocateworkBuffer(mediaCtx->coreIdx, &mediaCtx->vbWork) == FALSE) {
+            printf("jackson.......... 1-1\n");
+            va = VA_STATUS_ERROR_OPERATION_FAILED;
+            return va;
+        }
+
+        mediaCtx->decOP.instBuffer.workBufBase = mediaCtx->vbWork.phys_addr;
+        mediaCtx->decOP.instBuffer.workBufSize = mediaCtx->vbWork.size;
+
+        if (VpuApiAllocateTempBuffer(mediaCtx->coreIdx, &mediaCtx->vbTemp) == FALSE) {
+            printf("jackson.......... 1-2\n");
+            va = VA_STATUS_ERROR_OPERATION_FAILED;
+            return va;
+        }
+        mediaCtx->decOP.instBuffer.tempBufBase = mediaCtx->vbTemp.phys_addr;
+        mediaCtx->decOP.instBuffer.tempBufSize = mediaCtx->vbTemp.size;
+    }
+    printf("jackson.......... 2\n");
     retCode = VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP);
     if (retCode != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] %s Failed to Open decoder instance retCode=0x%x\n", __FUNCTION__, retCode);
@@ -2001,6 +2210,7 @@ static VAStatus VpuApiDecSeqInit(
     DecInitialInfo seqInfo;
     BOOL seqInited = FALSE;
     Int32 intrFlag = 0;
+    Int32 productId;
 
     if (mediaCtx->seqInited == TRUE) {
         return VA_STATUS_SUCCESS;
@@ -2044,6 +2254,7 @@ static VAStatus VpuApiDecSeqInit(
     }
 
     mediaCtx->seqInited = seqInited;
+    mediaCtx->chromaFormatIDC = seqInfo.chromaFormatIDC;
 
     printf("[CNM_VPUAPI] SUCCESS VpuApiDecSeqInit\n");
     printf("[CNM_VPUAPI] >>> width : %d | height : %d\n", seqInfo.picWidth, seqInfo.picHeight);
@@ -2054,6 +2265,15 @@ static VAStatus VpuApiDecSeqInit(
 
     if (AllocateDecFrameBuffer(mediaCtx, seqInfo) != VA_STATUS_SUCCESS)
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
+
+    productId = VPU_GetProductId(mediaCtx->coreIdx);
+    if (productId == PRODUCT_ID_637 || productId == PRODUCT_ID_617) {
+        for(int i=0; i<mediaCtx->numOfRenderTargets; i++) {
+            if(Wave6xxSetLinearFrameBufferInfo(hdl, mediaCtx, &mediaCtx->linearFrameBuf[i], seqInfo) != TRUE) {
+                return VA_STATUS_ERROR_ALLOCATION_FAILED;
+            }
+        }
+    }
 
     return VA_STATUS_SUCCESS;
 }
@@ -2237,6 +2457,13 @@ static VAStatus VpuApiDecPic(
     param.vaDecodeBufAddrY  = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufY;
     param.vaDecodeBufAddrCb = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCb;
     param.vaDecodeBufAddrCr = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCr;
+
+    mediaCtx->linearFrameBuf[param.vaRenderTarget].chromaFormatIDC = mediaCtx->chromaFormatIDC;
+    ret = VPU_DecRegisterDisplayBuffer(hdl, mediaCtx->linearFrameBuf[param.vaRenderTarget]);
+    if (ret != RETCODE_SUCCESS) {
+        printf("[CNM_VPUAPI] failed to register display buffer : %d \n", ret);
+        return VA_STATUS_ERROR_OPERATION_FAILED;
+    }
 #else
     printf("[CNM_VPUAPI] customer needs to get physical address from render_target surface=0x%x", mediaCtx->renderTarget);
     printf("[CNM_VPUAPI] customer needs to set param.vaDecodeBufAddrY and param.vaDecodeBufAddrCb and param.vaDecodeBufAddrCr to Physical address that VPU can access.\n");
@@ -2288,6 +2515,9 @@ static void VpuApiDecClose(
     uint32_t decIndex = (uint32_t)context & DDI_MEDIA_MASK_VACONTEXTID;
     VASurfaceID renderTarget = GetUsedRenderTarget(mediaCtx);
 
+    if (mediaCtx->decHandle == NULL)
+        return;
+
     while (renderTarget != VPUAPI_UNKNOWN_SURFACE_ID) {
         VAStatus vaStatus = VpuApiDecGetResult(ctx, renderTarget);
         if (vaStatus != VA_STATUS_SUCCESS)
@@ -2325,6 +2555,18 @@ static void VpuApiDecClose(
     }
 #endif
 #endif
+
+    if(mediaCtx->vbWork.size) {
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->vbWork, DEC_WORK, 0);
+        mediaCtx->vbWork.size = 0;
+        mediaCtx->vbWork.phys_addr = 0UL;
+    }
+
+    if(mediaCtx->vbTemp.size) {
+        vdi_free_dma_memory(mediaCtx->coreIdx, &mediaCtx->vbTemp, DEC_TEMP, 0);
+        mediaCtx->vbTemp.size = 0;
+        mediaCtx->vbTemp.phys_addr = 0UL;
+    }
 
     DdiMediaUtil_DestroyMutex(&mediaCtx->vpuapiMutex);
 
