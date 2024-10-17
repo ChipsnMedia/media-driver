@@ -1988,9 +1988,6 @@ static VAStatus VpuApiDecRenderPicture(
 
 static BOOL VpuApiAllocateworkBuffer(int32_t coreIdx, vpu_buffer_t *vbWork) {
 
-    if (vdi_init(coreIdx) < 0)
-        printf("[CNM_VPUAPI] FAIL vdi_init\n");
-
     vbWork->phys_addr = 0;
     vbWork->size = (Uint32)WAVE637DEC_WORKBUF_SIZE_FOR_CQ;
 
@@ -2002,9 +1999,6 @@ static BOOL VpuApiAllocateworkBuffer(int32_t coreIdx, vpu_buffer_t *vbWork) {
 
 static BOOL VpuApiAllocateTempBuffer(int32_t coreIdx, vpu_buffer_t *vbTemp)
 {
-    if (vdi_init(coreIdx) < 0)
-        printf("[CNM_VPUAPI] FAIL vdi_init\n");
-
     vbTemp->phys_addr = 0;
     vbTemp->size  = VPU_ALIGN4096(WAVE6_TEMPBUF_SIZE_FOR_CQ);
 
@@ -2103,10 +2097,8 @@ static VAStatus VpuApiDecOpen(
     mediaCtx->decOP.errorConcealUnit = ERROR_CONCEAL_UNIT_SLICE_TILE;
 
     productId = VPU_GetProductId(mediaCtx->coreIdx);
-    printf("jackson.......... 1\n");
     if (productId == PRODUCT_ID_637 || productId == PRODUCT_ID_617) {
         if (VpuApiAllocateworkBuffer(mediaCtx->coreIdx, &mediaCtx->vbWork) == FALSE) {
-            printf("jackson.......... 1-1\n");
             va = VA_STATUS_ERROR_OPERATION_FAILED;
             return va;
         }
@@ -2115,14 +2107,12 @@ static VAStatus VpuApiDecOpen(
         mediaCtx->decOP.instBuffer.workBufSize = mediaCtx->vbWork.size;
 
         if (VpuApiAllocateTempBuffer(mediaCtx->coreIdx, &mediaCtx->vbTemp) == FALSE) {
-            printf("jackson.......... 1-2\n");
             va = VA_STATUS_ERROR_OPERATION_FAILED;
             return va;
         }
         mediaCtx->decOP.instBuffer.tempBufBase = mediaCtx->vbTemp.phys_addr;
         mediaCtx->decOP.instBuffer.tempBufSize = mediaCtx->vbTemp.size;
     }
-    printf("jackson.......... 2\n");
     retCode = VPU_DecOpen(&mediaCtx->decHandle, &mediaCtx->decOP);
     if (retCode != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] %s Failed to Open decoder instance retCode=0x%x\n", __FUNCTION__, retCode);
