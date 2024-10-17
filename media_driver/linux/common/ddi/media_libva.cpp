@@ -2244,6 +2244,7 @@ static VAStatus VpuApiDecSeqInit(
     }
 
     mediaCtx->seqInited = seqInited;
+    mediaCtx->seqNum = seqInfo.sequenceNo;
     mediaCtx->chromaFormatIDC = seqInfo.chromaFormatIDC;
 
     printf("[CNM_VPUAPI] SUCCESS VpuApiDecSeqInit\n");
@@ -2449,6 +2450,8 @@ static VAStatus VpuApiDecPic(
     param.vaDecodeBufAddrCr = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCr;
 
     mediaCtx->linearFrameBuf[param.vaRenderTarget].chromaFormatIDC = mediaCtx->chromaFormatIDC;
+    mediaCtx->linearFrameBuf[param.vaRenderTarget].renderTarget = param.vaRenderTarget;
+    mediaCtx->linearFrameBuf[param.vaRenderTarget].sequenceNo = mediaCtx->seqNum;
     ret = VPU_DecRegisterDisplayBuffer(hdl, mediaCtx->linearFrameBuf[param.vaRenderTarget]);
     if (ret != RETCODE_SUCCESS) {
         printf("[CNM_VPUAPI] failed to register display buffer : %d \n", ret);
