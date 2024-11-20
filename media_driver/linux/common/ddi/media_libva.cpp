@@ -1246,7 +1246,7 @@ static BOOL Wave6xxSetLinearFrameBufferInfo(
     picHeight = (STD_AVC == mediaCtx->decOP.bitstreamFormat) ? VPU_ALIGN16(frame_buffer->height) : VPU_ALIGN8(frame_buffer->height);
     fbHeight  = picHeight;
 
-    linearStride = VPU_GetFrameBufStride(decHandle, picWidth, picHeight, outFormat, mediaCtx->cbcrInterleave, (TiledMapType)mapType);
+    linearStride = picWidth;
     framebufSize = VPU_GetFrameBufSize(decHandle, coreIndex, linearStride, fbHeight, (TiledMapType)mapType, outFormat, mediaCtx->cbcrInterleave, NULL);
     frame_buffer->updateFbInfo = TRUE;
     frame_buffer->size  = framebufSize;
@@ -2081,6 +2081,7 @@ static VAStatus VpuApiDecOpen(
     DdiMediaUtil_InitMutex(&mediaCtx->vpuapiMutex);
     mediaCtx->pictureWidth          = pictureWidth;
     mediaCtx->pictureHeight         = pictureHeight;
+
     mediaCtx->decOP.bitstreamFormat = bitFormat;
     mediaCtx->decOP.coreIdx         = mediaCtx->coreIdx;
     mediaCtx->decOP.bitstreamMode   = BS_MODE_PIC_END;
