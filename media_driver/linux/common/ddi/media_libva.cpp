@@ -1222,6 +1222,8 @@ static void FreeLinearFrameBuffer(
     vdi_release(mediaCtx->coreIdx);
 }
 
+#endif
+
 static BOOL Wave6xxSetLinearFrameBufferInfo(
     DecHandle decHandle,
     PDDI_MEDIA_CONTEXT mediaCtx,
@@ -1279,10 +1281,6 @@ static BOOL Wave6xxSetLinearFrameBufferInfo(
 
     return TRUE;
 }
-
-
-#endif
-
 
 static void VpuApiDecPrintDebugInfo(
     VADriverContextP ctx
