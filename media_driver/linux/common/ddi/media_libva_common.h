@@ -633,6 +633,7 @@ struct DDI_MEDIA_CONTEXT
     int32_t           coreIdx;
     int32_t           chromaFormatIDC;
     int32_t           seqNum;
+    DecInitialInfo    decSeqInfo;
 #endif
 };
 

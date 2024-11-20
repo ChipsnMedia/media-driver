@@ -2246,7 +2246,7 @@ static VAStatus VpuApiDecSeqInit(
     mediaCtx->seqInited = seqInited;
     mediaCtx->seqNum = seqInfo.sequenceNo;
     mediaCtx->chromaFormatIDC = seqInfo.chromaFormatIDC;
-
+    mediaCtx->decSeqInfo = seqInfo;
     printf("[CNM_VPUAPI] SUCCESS VpuApiDecSeqInit\n");
     printf("[CNM_VPUAPI] >>> width : %d | height : %d\n", seqInfo.picWidth, seqInfo.picHeight);
     printf("[CNM_VPUAPI] >>> crop left : %d | top : %d | right : %d | bottom : %d\n", seqInfo.picCropRect.left, seqInfo.picCropRect.top, seqInfo.picCropRect.right, seqInfo.picCropRect.bottom);
@@ -2256,15 +2256,6 @@ static VAStatus VpuApiDecSeqInit(
 
     if (AllocateDecFrameBuffer(mediaCtx, seqInfo) != VA_STATUS_SUCCESS)
         return VA_STATUS_ERROR_ALLOCATION_FAILED;
-
-    productId = VPU_GetProductId(mediaCtx->coreIdx);
-    if (productId == PRODUCT_ID_637 || productId == PRODUCT_ID_617) {
-        for(int i=0; i<mediaCtx->numOfRenderTargets; i++) {
-            if(Wave6xxSetLinearFrameBufferInfo(hdl, mediaCtx, &mediaCtx->linearFrameBuf[i], seqInfo) != TRUE) {
-                return VA_STATUS_ERROR_ALLOCATION_FAILED;
-            }
-        }
-    }
 
     return VA_STATUS_SUCCESS;
 }
@@ -2363,9 +2354,9 @@ static VAStatus VpuApiDecGetResult(
         printf("[CNM_VPUAPI] Dump Linear Frame WxH : %dx%d, wtl_format=%d\n", mediaCtx->linearStride, mediaCtx->linearHeight, mediaCtx->wtlFormat);
         printf("[CNM_VPUAPI] Dump lumaSize : %d\n", lumaSize);
         printf("[CNM_VPUAPI] Dump chromaSize : %d\n", chromaSize);
-        printf("[CNM_VPUAPI] Dump BufAddrY: 0x%x\n", outputInfo.vaDecodeBufAddrY);
-        printf("[CNM_VPUAPI] Dump BufAddrCb: 0x%x\n", outputInfo.vaDecodeBufAddrCb);
-        printf("[CNM_VPUAPI] Dump BufAddrCr: 0x%x\n", outputInfo.vaDecodeBufAddrCr);
+        printf("[CNM_VPUAPI] Dump BufAddrY: 0x%lx\n", outputInfo.vaDecodeBufAddrY);
+        printf("[CNM_VPUAPI] Dump BufAddrCb: 0x%lx\n", outputInfo.vaDecodeBufAddrCb);
+        printf("[CNM_VPUAPI] Dump BufAddrCr: 0x%lx\n", outputInfo.vaDecodeBufAddrCr);
 #endif
 
         dataY  = (uint8_t*)osal_malloc(lumaSize);
@@ -2429,7 +2420,10 @@ static VAStatus VpuApiDecPic(
     RetCode ret = RETCODE_SUCCESS;
     DecHandle hdl = mediaCtx->decHandle;
     DecParam param;
+    FrameBuffer       linearFrameBuf;
+    Int32   productId;
 
+    osal_memset(&linearFrameBuf, 0x00, sizeof(FrameBuffer));
     osal_memset(&param, 0x00, sizeof(DecParam));
 
     while (FindUsedRenderTarget(mediaCtx, mediaCtx->renderTarget)) {
@@ -2448,29 +2442,43 @@ static VAStatus VpuApiDecPic(
     param.vaDecodeBufAddrY  = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufY;
     param.vaDecodeBufAddrCb = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCb;
     param.vaDecodeBufAddrCr = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCr;
-
-    mediaCtx->linearFrameBuf[param.vaRenderTarget].chromaFormatIDC = mediaCtx->chromaFormatIDC;
-    mediaCtx->linearFrameBuf[param.vaRenderTarget].renderTarget = param.vaRenderTarget;
-    mediaCtx->linearFrameBuf[param.vaRenderTarget].sequenceNo = mediaCtx->seqNum;
-    ret = VPU_DecRegisterDisplayBuffer(hdl, mediaCtx->linearFrameBuf[param.vaRenderTarget]);
-    if (ret != RETCODE_SUCCESS) {
-        printf("[CNM_VPUAPI] failed to register display buffer : %d \n", ret);
-        return VA_STATUS_ERROR_OPERATION_FAILED;
-    }
+    linearFrameBuf.bufY = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufY;
+    linearFrameBuf.bufCb = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCb;
+    linearFrameBuf.bufCr = mediaCtx->linearFrameBuf[param.vaRenderTarget].bufCr;
 #else
     printf("[CNM_VPUAPI] customer needs to get physical address from render_target surface=0x%x", mediaCtx->renderTarget);
     printf("[CNM_VPUAPI] customer needs to set param.vaDecodeBufAddrY and param.vaDecodeBufAddrCb and param.vaDecodeBufAddrCr to Physical address that VPU can access.\n");
+    printf("[CNM_VPUAPI] customer needs to set linearFrameBuf.bufY and linearFrameBuf.bufCb and linearFrameBuf.bufCr to Physical address that VPU can access.\n");
 #endif
 
+    productId = VPU_GetProductId(mediaCtx->coreIdx);
+    if (productId == PRODUCT_ID_637 || productId == PRODUCT_ID_617) {
+        linearFrameBuf.width = mediaCtx->linearStride;
+        linearFrameBuf.height = mediaCtx->linearHeight;
+
+        if(Wave6xxSetLinearFrameBufferInfo(hdl, mediaCtx, &linearFrameBuf, mediaCtx->decSeqInfo) != TRUE) {
+                return VA_STATUS_ERROR_ALLOCATION_FAILED;
+        }
+
+        linearFrameBuf.chromaFormatIDC = mediaCtx->chromaFormatIDC;
+        linearFrameBuf.renderTarget = param.vaRenderTarget;
+        linearFrameBuf.sequenceNo = mediaCtx->seqNum;
+        ret = VPU_DecRegisterDisplayBuffer(hdl, linearFrameBuf);
+        if (ret != RETCODE_SUCCESS) {
+            printf("[CNM_VPUAPI] failed to register display buffer : %d \n", ret);
+            return VA_STATUS_ERROR_OPERATION_FAILED;
+        }
+    }
+
 #ifdef CNM_VPUAPI_INTERFACE_DEBUG
-    printf("[CNM_VPUAPI] bsBuf: 0x%x\n", mediaCtx->bsBuf[mediaCtx->bufIdx].phys_addr);
+    printf("[CNM_VPUAPI] bsBuf: 0x%lx\n", mediaCtx->bsBuf[mediaCtx->bufIdx].phys_addr);
     printf("[CNM_VPUAPI] bsSize: %d\n", mediaCtx->bsSize);
-    printf("[CNM_VPUAPI] paramBuf: 0x%x\n", param.vaParamAddr);
+    printf("[CNM_VPUAPI] paramBuf: 0x%lx\n", param.vaParamAddr);
     printf("[CNM_VPUAPI] numOfSlice: %d\n", param.vaSliceNum);
     printf("[CNM_VPUAPI] RenderTarget: %d\n", param.vaRenderTarget);
-    printf("[CNM_VPUAPI] BufAddrY: 0x%x\n", param.vaDecodeBufAddrY);
-    printf("[CNM_VPUAPI] BufAddrCb: 0x%x\n", param.vaDecodeBufAddrCb);
-    printf("[CNM_VPUAPI] BufAddrCr: 0x%x\n", param.vaDecodeBufAddrCr);
+    printf("[CNM_VPUAPI] BufAddrY: 0x%lx\n", param.vaDecodeBufAddrY);
+    printf("[CNM_VPUAPI] BufAddrCb: 0x%lx\n", param.vaDecodeBufAddrCb);
+    printf("[CNM_VPUAPI] BufAddrCr: 0x%lx\n", param.vaDecodeBufAddrCr);
 #endif
 
     while ((ret=VPU_DecStartOneFrame(hdl, &param)) == RETCODE_QUEUEING_FAILURE) {
