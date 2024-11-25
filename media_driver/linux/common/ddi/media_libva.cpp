@@ -2580,6 +2580,8 @@ static void VpuApiDecClose(
     printf("[CNM_VPUAPI] Success Close decoder instance\n");
 }
 
+#ifdef CNM_VPUAPI_ENCODER
+
 static void AllocateEncInternalBuffer(
     PDDI_MEDIA_CONTEXT mediaCtx,
     int32_t            index
@@ -3519,6 +3521,7 @@ static VAStatus VpuApiEncPic(
 
     return VA_STATUS_SUCCESS;
 }
+#endif // CNM_VPUAPI_ENCODER
 #endif
 
 static PDDI_MEDIA_CONTEXT DdiMedia_CreateMediaDriverContext()
@@ -6694,13 +6697,17 @@ VAStatus DdiMedia_CreateContext (
             VpuApiDecClose(ctx, *context);
             VpuApiDeInit(mediaDrvCtx->coreIdx);
         }
-    } else if (config_id < VPUAPI_MAX_CONFIG_ID) {
+    } 
+ #ifdef CNM_VPUAPI_ENCODER
+    else if (config_id < VPUAPI_MAX_CONFIG_ID) {
         vaStatus = VpuApiEncOpen(ctx, config_id, picture_width, picture_height, context);
         if (vaStatus != VA_STATUS_SUCCESS) {
             VpuApiEncClose(ctx, *context);
             VpuApiDeInit(mediaDrvCtx->coreIdx);
         }
-    } else {
+    }
+#endif
+    else {
         DDI_ASSERTMESSAGE("DDI: Invalid config_id");
         VpuApiDeInit(mediaDrvCtx->coreIdx);
         vaStatus = VA_STATUS_ERROR_INVALID_CONFIG;
@@ -6750,6 +6757,7 @@ VAStatus DdiMedia_DestroyContext (
             VpuApiDeInit(mediaCtx->coreIdx);
             return VA_STATUS_SUCCESS;
         }
+#ifdef CNM_VPUAPI_ENCODER
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
         {
             PDDI_MEDIA_CONTEXT mediaCtx = DdiMedia_GetMediaContext(ctx);
@@ -6757,6 +6765,7 @@ VAStatus DdiMedia_DestroyContext (
             VpuApiDeInit(mediaCtx->coreIdx);
             return VA_STATUS_SUCCESS;
         }
+#endif
         case DDI_MEDIA_CONTEXT_TYPE_VP:
         case DDI_MEDIA_CONTEXT_TYPE_MFE:
             DDI_ASSERTMESSAGE("DDI: unsupported context in DdiCodec_DestroyContext.");
@@ -6812,9 +6821,11 @@ VAStatus DdiMedia_CreateBuffer (
         case DDI_MEDIA_CONTEXT_TYPE_DECODER:
             va = VpuApiDecCreateBuffer(ctx, ctxPtr, type, size, num_elements, data, bufId);
             break;
+#ifdef CNM_VPUAPI_ENCODER
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             va = VpuApiEncCreateBuffer(ctx, ctxPtr, type, size, num_elements, data, bufId);
             break;
+#endif
         case DDI_MEDIA_CONTEXT_TYPE_VP:
         case DDI_MEDIA_CONTEXT_TYPE_PROTECTED:
             va = VA_STATUS_ERROR_INVALID_CONTEXT;
@@ -7707,6 +7718,7 @@ VAStatus DdiMedia_EndPicture (
             }
             vaStatus = VpuApiDecPic(ctx);
             break;
+#ifdef CNM_VPUAPI_ENCODER
         case DDI_MEDIA_CONTEXT_TYPE_ENCODER:
             vaStatus = VpuApiEncSeqInit(ctx);
             if (vaStatus != VA_STATUS_SUCCESS) {
@@ -7714,6 +7726,7 @@ VAStatus DdiMedia_EndPicture (
             }
             vaStatus = VpuApiEncPic(ctx);
             break;
+#endif
         case DDI_MEDIA_CONTEXT_TYPE_VP:
             DDI_ASSERTMESSAGE("DDI: unsupported context in DdiCodec_EndPicture.");
             vaStatus = VA_STATUS_ERROR_INVALID_CONTEXT;

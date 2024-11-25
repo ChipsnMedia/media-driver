@@ -567,9 +567,11 @@ struct DDI_MEDIA_CONTEXT
 #ifdef CNM_VPUAPI_INTERFACE
     MEDIA_MUTEX_T     vpuapiMutex;
     DecHandle         decHandle;
-    EncHandle         encHandle;
     DecOpenParam      decOP;
+#ifdef CNM_VPUAPI_ENCODER
+    EncHandle         encHandle;
     EncOpenParam      encOP;
+#endif
     VACodedBufferSegment *pCodedBufferSegment;
     VABufferID        encodedBufferId;
     VAProfile         vaProfile;
