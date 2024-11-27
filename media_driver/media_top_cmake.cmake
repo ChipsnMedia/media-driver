@@ -146,9 +146,7 @@ add_definitions(-DCNM_VPUAPI_INTERFACE)
 add_definitions(-DSUPPORT_VAAPI_INTERFACE)
 add_definitions(-DWAVE637)
 add_definitions(-DSUPPORT_SOPHGO)
-add_definitions(-DCNM_FPGA_PLATFORM)
-#add_definitions(-DCNM_FPGA_VU440_INTERFACE)
-#add_definitions(-DCNM_FPGA_PCI_INTERFACE)
+#add_definitions(-DCNM_FPGA_PLATFORM)
 add_definitions(-DCNM_VPUAPI_INTERFACE_CAP)
 #endif
 
